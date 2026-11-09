@@ -1852,6 +1852,7 @@ function RosterCalendarPage({ staff, isAdmin }: { staff: Staff[]; isAdmin: boole
                                         onChange={e => handleStaffChange(cell.dateStr, 'morning', sIdx, e.target.value)}
                                         style={{
                                           flex: 1,
+                                          minWidth: 0,
                                           fontSize: '11px',
                                           padding: '3px 2px',
                                           borderRadius: '4px',
@@ -1872,6 +1873,7 @@ function RosterCalendarPage({ staff, isAdmin }: { staff: Staff[]; isAdmin: boole
                                           onClick={() => removeStaffSlot(cell.dateStr, 'morning', sIdx)}
                                           title="ลบออก"
                                           style={{
+                                            flexShrink: 0,
                                             backgroundColor: '#ef4444',
                                             color: '#fff',
                                             border: 'none',
@@ -1921,6 +1923,7 @@ function RosterCalendarPage({ staff, isAdmin }: { staff: Staff[]; isAdmin: boole
                                         onChange={e => handleStaffChange(cell.dateStr, 'afternoon', sIdx, e.target.value)}
                                         style={{
                                           flex: 1,
+                                          minWidth: 0,
                                           fontSize: '11px',
                                           padding: '3px 2px',
                                           borderRadius: '4px',
@@ -1941,6 +1944,7 @@ function RosterCalendarPage({ staff, isAdmin }: { staff: Staff[]; isAdmin: boole
                                           onClick={() => removeStaffSlot(cell.dateStr, 'afternoon', sIdx)}
                                           title="ลบออก"
                                           style={{
+                                            flexShrink: 0,
                                             backgroundColor: '#ef4444',
                                             color: '#fff',
                                             border: 'none',
