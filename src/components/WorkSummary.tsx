@@ -127,9 +127,9 @@ export function WorkSummary() {
         <div className="stat-card">
           <div className="stat-icon text-emerald-600"><Banknote size={24} /></div>
           <div>
-            <div className="stat-label">เงินสดเก็บได้</div>
+            <div className="stat-label">ผู้ป่วยเก็บเงินได้</div>
             <div className="stat-value">{monthlyTotals.cash.toLocaleString()}</div>
-            <div className="stat-sub">บาท/เดือน</div>
+            <div className="stat-sub">ราย/เดือน</div>
           </div>
         </div>
         <div className="stat-card">
@@ -204,9 +204,9 @@ export function WorkSummary() {
 
                     {hasData ? (
                       <div style={{ fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '2px', color: '#1e293b' }}>
-                        <div><b>ผู้ป่วย:</b> {record.total_patients} คน</div>
-                        <div><b>เงินสด:</b> {record.cash_collected.toLocaleString()} บ.</div>
-                        <div><b>UC:</b> {record.uc_count} คน</div>
+                        <div><b>ผู้ป่วยรวม:</b> {record.total_patients} ราย</div>
+                        <div><b>ผู้ป่วยเก็บเงิน:</b> {record.cash_collected.toLocaleString()} ราย</div>
+                        <div><b>UC:</b> {record.uc_count} ราย</div>
                       </div>
                     ) : (
                       <div style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', marginTop: '14px' }}>
@@ -244,7 +244,7 @@ export function WorkSummary() {
                 />
               </label>
               <label>
-                จำนวนเงินสดที่เก็บได้ (บาท):
+                จำนวนผู้ป่วยเก็บเงินได้ (ราย):
                 <input
                   type="number"
                   min="0"
