@@ -1,279 +1,279 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { Printer, Calendar as CalendarIcon, Save, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react'
+import { Calendar, Printer, ChevronLeft, ChevronRight, UserCheck, Banknote, CreditCard, X, Loader2 } from 'lucide-react'
+import { supabase } from '../lib/supabase'
 
-interface DailySummary {
-  id?: string;
-  date: string;
-  total_patients: number;
-  paid_patients: number;
-  uc_patients: number;
-  created_at?: string;
+interface WorkSummaryRecord {
+  id?: string
+  work_date: string
+  total_patients: number
+  cash_collected: number
+  uc_count: number
 }
 
-export const WorkSummary: React.FC = () => {
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
-  const [summaries, setSummaries] = useState<Record<string, DailySummary>>({});
-  const [rosterData, setRosterData] = useState<any[]>([]);
-  const [staffData, setStaffData] = useState<any[]>([]);
-  const [form, setForm] = useState({ total_patients: 0, paid_patients: 0, uc_patients: 0 });
-  const [loading, setLoading] = useState(false);
+export function WorkSummary() {
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [summaryData, setSummaryData] = useState<Record<string, WorkSummaryRecord>>({})
+  const [loading, setLoading] = useState(false)
+  
+  // State สำหรับ Modal กรอกตัวเลขประจำวัน
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [form, setForm] = useState({ total_patients: 0, cash_collected: 0, uc_count: 0 })
+  const [saving, setSaving] = useState(false)
 
-  const year = currentDate.getFullYear();
-  const month = currentDate.getMonth();
+  const year = currentDate.getFullYear()
+  const month = currentDate.getMonth()
 
-  // ดึงข้อมูลสรุปผล + ตารางเวร + รายชื่อเจ้าหน้าที่
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const firstDayIndex = new Date(year, month, 1).getDay()
+
   useEffect(() => {
-    fetchData();
-  }, [year, month]);
+    void loadMonthlySummary()
+  }, [year, month])
 
-  const fetchData = async () => {
-    if (!supabase) return;
-    setLoading(true);
-    const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-    const lastDay = new Date(year, month + 1, 0).getDate();
-    const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${lastDay}`;
+  async function loadMonthlySummary() {
+    if (!supabase) return
+    setLoading(true)
 
-    // 1. ดึงสรุปผลปฏิบัติงาน
-    const { data: summaryData } = await supabase
-      .from('daily_summaries')
+    const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`
+    const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`
+
+    const { data } = await supabase
+      .from('work_summaries')
       .select('*')
-      .gte('date', startDate)
-      .lte('date', endDate);
+      .gte('work_date', startDate)
+      .lte('work_date', endDate)
 
-    const summaryMap: Record<string, DailySummary> = {};
-    summaryData?.forEach((item: DailySummary) => { summaryMap[item.date] = item; });
-    setSummaries(summaryMap);
+    const map: Record<string, WorkSummaryRecord> = {}
+    data?.forEach((item: WorkSummaryRecord) => {
+      map[item.work_date] = item
+    })
 
-    // 2. ดึงข้อมูลเวรประจำเดือน
-    const { data: roster } = await supabase
-      .from('roster')
-      .select('*')
-      .gte('date', startDate)
-      .lte('date', endDate);
-    setRosterData(roster || []);
+    setSummaryData(map)
+    setLoading(false)
+  }
 
-    // 3. ดึงข้อมูลเจ้าหน้าที่เพื่อเรียงตามตำแหน่ง (วิชาชีพ -> ลูกจ้าง)
-    const { data: staff } = await supabase.from('staff').select('*');
-    setStaffData(staff || []);
-
-    setLoading(false);
-  };
-
-  // โหลดค่าของวันที่คลิกเลือก
-  useEffect(() => {
-    if (summaries[selectedDate]) {
+  function openDayModal(dateStr: string) {
+    setSelectedDate(dateStr)
+    const record = summaryData[dateStr]
+    if (record) {
       setForm({
-        total_patients: summaries[selectedDate].total_patients || 0,
-        paid_patients: summaries[selectedDate].paid_patients || 0,
-        uc_patients: summaries[selectedDate].uc_patients || 0,
-      });
+        total_patients: record.total_patients || 0,
+        cash_collected: record.cash_collected || 0,
+        uc_count: record.uc_count || 0,
+      })
     } else {
-      setForm({ total_patients: 0, paid_patients: 0, uc_patients: 0 });
+      setForm({ total_patients: 0, cash_collected: 0, uc_count: 0 })
     }
-  }, [selectedDate, summaries]);
+  }
 
-  // บันทึกผลการปฏิบัติงาน
-  const handleSave = async () => {
-    if (!supabase) return;
-    setLoading(true);
+  async function handleSaveDayRecord(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedDate || !supabase) return
+    setSaving(true)
+
     const payload = {
-      date: selectedDate,
+      work_date: selectedDate,
       total_patients: Number(form.total_patients),
-      paid_patients: Number(form.paid_patients),
-      uc_patients: Number(form.uc_patients),
-    };
-
-    const existing = summaries[selectedDate];
-    if (existing?.id) {
-      await supabase.from('daily_summaries').update(payload).eq('id', existing.id);
-    } else {
-      await supabase.from('daily_summaries').insert([payload]);
+      cash_collected: Number(form.cash_collected),
+      uc_count: Number(form.uc_count),
     }
 
-    await fetchData();
-    alert('บันทึกผลการปฏิบัติงานเรียบร้อยแล้ว');
-  };
+    const { error } = await supabase
+      .from('work_summaries')
+      .upsert(payload, { onConflict: 'work_date' })
 
-  // คำนวณวันในปฏิทิน
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDayIndex = new Date(year, month, 1).getDay();
+    setSaving(false)
+    if (!error) {
+      setSelectedDate(null)
+      await loadMonthlySummary()
+    }
+  }
 
-  // ปริ้นเอกสาร
-  const handlePrint = () => {
-    window.print();
-  };
-
-  // จัดกลุ่มและเรียงเจ้าหน้าที่ที่ปฏิบัติงานในแต่วัน (วิชาชีพ -> ลูกจ้าง)
-  const getStaffForDate = (dateStr: string) => {
-    const shifts = rosterData.filter((r: any) => r.date === dateStr);
-    if (!shifts.length) return '-';
-
-    const staffIds = Array.from(new Set(shifts.map((s: any) => s.staff_id)));
-    const onDutyStaff = staffData.filter((s: any) => staffIds.includes(s.id));
-
-    // เรียงวิชาชีพขึ้นก่อนลูกจ้าง โดยเช็คจาก staff_type
-    onDutyStaff.sort((a: any, b: any) => {
-      if (a.staff_type === 'วิชาชีพ' && b.staff_type !== 'วิชาชีพ') return -1;
-      if (a.staff_type !== 'วิชาชีพ' && b.staff_type === 'วิชาชีพ') return 1;
-      return 0;
-    });
-
-    return onDutyStaff.map((s: any) => `${s.first_name} ${s.last_name}`).join(', ');
-  };
+  // คำนวณ ยอดรวมประจำเดือน
+  const monthlyTotals = useMemo(() => {
+    let patients = 0, cash = 0, uc = 0
+    Object.values(summaryData).forEach(item => {
+      patients += item.total_patients || 0
+      cash += item.cash_collected || 0
+      uc += item.uc_count || 0
+    })
+    return { patients, cash, uc }
+  }, [summaryData])
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      {/* ส่วนควบคุม (ซ่อนเมื่อพิมพ์) */}
-      <div className="print:hidden flex justify-between items-center bg-white p-4 rounded-xl shadow">
-        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <CalendarIcon className="w-6 h-6 text-blue-600" /> สรุปผลการปฏิบัติงานประจำเดือน
-        </h2>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <button onClick={() => setCurrentDate(new Date(year, month - 1, 1))} className="p-2 hover:bg-gray-100 rounded">
-              <ChevronLeft />
-            </button>
-            <span className="font-semibold text-lg">
-              {currentDate.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}
-            </span>
-            <button onClick={() => setCurrentDate(new Date(year, month + 1, 1))} className="p-2 hover:bg-gray-100 rounded">
-              <ChevronRight />
-            </button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* Header */}
+      <div className="page-heading no-print">
+        <div>
+          <div className="eyebrow font-semibold">WORK SUMMARY</div>
+          <h1 className="text-2xl font-bold">สรุปผลการปฏิบัติงานประจำเดือน</h1>
+          <p className="text-gray-600">บันทึกยอดผู้รับบริการและค่าบริการรายวันผ่านปฏิทิน</p>
+        </div>
+        <button onClick={() => window.print()} className="btn primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Printer size={18} /> พิมพ์รายงานสรุปผล
+        </button>
+      </div>
+
+      {/* สรุปยอดรวมประจำเดือน Cards */}
+      <div className="stats-grid no-print">
+        <div className="stat-card">
+          <div className="stat-icon text-blue-600"><UserCheck size={24} /></div>
+          <div>
+            <div className="stat-label">ผู้รับบริการทั้งหมด</div>
+            <div className="stat-value">{monthlyTotals.patients.toLocaleString()}</div>
+            <div className="stat-sub">ราย/เดือน</div>
           </div>
-          <button onClick={handlePrint} className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700">
-            <Printer className="w-4 h-4" /> ปริ้นเอกสารสรุปผล
-          </button>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon text-emerald-600"><Banknote size={24} /></div>
+          <div>
+            <div className="stat-label">เงินสดเก็บได้</div>
+            <div className="stat-value">{monthlyTotals.cash.toLocaleString()}</div>
+            <div className="stat-sub">บาท/เดือน</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon text-amber-600"><CreditCard size={24} /></div>
+          <div>
+            <div className="stat-label">สิทธิ UC / ประกันสุขภาพ</div>
+            <div className="stat-value">{monthlyTotals.uc.toLocaleString()}</div>
+            <div className="stat-sub">ราย/เดือน</div>
+          </div>
         </div>
       </div>
 
-      {/* ปฏิทินกรอกข้อมูล (ซ่อนเมื่อพิมพ์) */}
-      <div className="print:hidden grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* ฝั่งปฏิทิน */}
-        <div className="md:col-span-2 bg-white p-4 rounded-xl shadow">
-          <div className="grid grid-cols-7 gap-2 text-center font-bold text-gray-600 mb-2">
-            {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map(d => <div key={d}>{d}</div>)}
+      {/* ปฏิทินแสดงและกรอกข้อมูล */}
+      <div className="panel no-print" style={{ backgroundColor: '#ffffff', padding: '20px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Calendar size={20} /> ปฏิทินสรุปผลงาน: {currentDate.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}
+          </h2>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button onClick={() => setCurrentDate(new Date(year, month - 1, 1))} className="btn secondary" style={{ padding: '6px 12px' }}>
+              <ChevronLeft size={16} /> เดือนก่อน
+            </button>
+            <button onClick={() => setCurrentDate(new Date(year, month + 1, 1))} className="btn secondary" style={{ padding: '6px 12px' }}>
+              เดือนถัดไป <ChevronRight size={16} />
+            </button>
           </div>
-          <div className="grid grid-cols-7 gap-2">
-            {Array.from({ length: firstDayIndex }).map((_, i) => <div key={`empty-${i}`} />)}
-            {Array.from({ length: daysInMonth }).map((_, i) => {
-              const dayNum = i + 1;
-              const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-              const isSelected = selectedDate === dateStr;
-              const hasData = !!summaries[dateStr];
+        </div>
 
-              return (
-                <button
-                  key={dayNum}
-                  onClick={() => setSelectedDate(dateStr)}
-                  className={`p-3 border rounded-lg text-left relative transition ${
-                    isSelected ? 'border-blue-600 bg-blue-50 ring-2 ring-blue-400' : 'hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="font-bold text-gray-700">{dayNum}</span>
-                  {hasData && (
-                    <div className="mt-1 text-xs text-blue-600">
-                      <div>รวม: {summaries[dateStr].total_patients}</div>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <Loader2 className="animate-spin" style={{ margin: '0 auto 8px auto' }} />
+            <p>กำลังโหลดข้อมูลสรุปผลงาน...</p>
+          </div>
+        ) : (
+          <>
+            {/* ตารางปฏิทิน 7 วัน */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', textAlign: 'center', fontWeight: 'bold', color: '#475569', marginBottom: '8px' }}>
+              {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map(d => <div key={d}>{d}</div>)}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
+              {Array.from({ length: firstDayIndex }).map((_, i) => <div key={`empty-${i}`} />)}
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const dayNum = i + 1
+                const monthStr = String(month + 1).padStart(2, '0')
+                const dayStr = String(dayNum).padStart(2, '0')
+                const dateStr = `${year}-${monthStr}-${dayStr}`
+
+                const record = summaryData[dateStr]
+                const hasData = record && (record.total_patients > 0 || record.cash_collected > 0 || record.uc_count > 0)
+
+                return (
+                  <div
+                    key={dayNum}
+                    onClick={() => openDayModal(dateStr)}
+                    style={{
+                      padding: '8px',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      minHeight: '100px',
+                      backgroundColor: hasData ? '#f0fdf4' : '#ffffff',
+                      borderColor: hasData ? '#86efac' : '#cbd5e1',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease-in-out',
+                    }}
+                    className="hover:shadow-md hover:border-blue-400"
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#334155' }}>{dayNum}</span>
+                      {hasData && <span style={{ fontSize: '10px', backgroundColor: '#22c55e', color: '#fff', padding: '1px 5px', borderRadius: '10px' }}>บันทึกแล้ว</span>}
                     </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
 
-        {/* ฟอร์มกรอกตัวเลขประจำวันที่เลือก */}
-        <div className="bg-white p-5 rounded-xl shadow space-y-4">
-          <h3 className="font-bold text-lg text-gray-800 border-b pb-2">
-            บันทึกผลวันที่: {new Date(selectedDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}
-          </h3>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">1. จำนวนผู้รับบริการทั้งหมด (ราย)</label>
-              <input
-                type="number"
-                min="0"
-                value={form.total_patients}
-                onChange={e => setForm({ ...form, total_patients: Number(e.target.value) })}
-                className="mt-1 w-full p-2 border rounded-md"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">2. ผู้ป่วยเก็บเงินได้ (ราย)</label>
-              <input
-                type="number"
-                min="0"
-                value={form.paid_patients}
-                onChange={e => setForm({ ...form, paid_patients: Number(e.target.value) })}
-                className="mt-1 w-full p-2 border rounded-md"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">3. ผู้ป่วย UC (ราย)</label>
-              <input
-                type="number"
-                min="0"
-                value={form.uc_patients}
-                onChange={e => setForm({ ...form, uc_patients: Number(e.target.value) })}
-                className="mt-1 w-full p-2 border rounded-md"
-              />
-            </div>
-          </div>
-          <button
-            onClick={handleSave}
-            disabled={loading}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700"
-          >
-            <Save className="w-4 h-4" /> บันทึกผลการปฏิบัติงาน
-          </button>
-        </div>
-      </div>
-
-      {/* เอกสารสำหรับพิมพ์ (Print Layout) */}
-      <div className="bg-white p-6 shadow-md rounded-xl print:shadow-none print:p-0">
-        <div className="text-center mb-6">
-          <h1 className="text-xl font-bold">รายงานสรุปผลการปฏิบัติงานประจำเดือน</h1>
-          <p className="text-gray-600">
-            ประจำเดือน {currentDate.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}
-          </p>
-        </div>
-
-        <table className="w-full border-collapse border border-gray-400 text-sm">
-          <thead>
-            <tr className="bg-gray-100 print:bg-gray-200">
-              <th className="border border-gray-400 p-2 w-24 text-center">วันที่</th>
-              <th className="border border-gray-400 p-2 text-left">รายชื่อเจ้าหน้าที่ผู้ปฏิบัติงาน (เช้า-บ่าย)</th>
-              <th className="border border-gray-400 p-2 w-64 text-center">ผลการปฏิบัติงาน (ราย)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Array.from({ length: daysInMonth }).map((_, i) => {
-              const dayNum = i + 1;
-              const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-              const data = summaries[dateStr];
-
-              return (
-                <tr key={dayNum} className="hover:bg-gray-50">
-                  <td className="border border-gray-400 p-2 text-center font-medium">{dayNum}</td>
-                  <td className="border border-gray-400 p-2">{getStaffForDate(dateStr)}</td>
-                  <td className="border border-gray-400 p-2">
-                    {data ? (
-                      <div className="text-xs space-y-1">
-                        <div>• ทั้งหมด: <strong>{data.total_patients}</strong> ราย</div>
-                        <div>• เก็บเงินได้: <strong>{data.paid_patients}</strong> ราย</div>
-                        <div>• UC: <strong>{data.uc_patients}</strong> ราย</div>
+                    {hasData ? (
+                      <div style={{ fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '2px', color: '#1e293b' }}>
+                        <div><b>ผู้ป่วย:</b> {record.total_patients} คน</div>
+                        <div><b>เงินสด:</b> {record.cash_collected.toLocaleString()} บ.</div>
+                        <div><b>UC:</b> {record.uc_count} คน</div>
                       </div>
                     ) : (
-                      <span className="text-gray-400 text-xs text-center block">- ไม่ได้บันทึก -</span>
+                      <div style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', marginTop: '14px' }}>
+                        + คลิกเพื่อกรอก
+                      </div>
                     )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
       </div>
+
+      {/* Modal ป๊อปอัพสำหรับกรอกตัวเลขประจำวัน */}
+      {selectedDate && (
+        <div className="modal-backdrop no-print" onMouseDown={e => { if (e.target === e.currentTarget) setSelectedDate(null) }}>
+          <form className="modal" onSubmit={handleSaveDayRecord} style={{ maxWidth: '420px' }}>
+            <div className="modal-head">
+              <div>
+                <h2>บันทึกผลงานประจำวันที่ {new Date(selectedDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'long', year: 'numeric' })}</h2>
+                <p>กรอกตัวเลขผลการปฏิบัติงานและยอดเงิน</p>
+              </div>
+              <button type="button" className="icon-button" onClick={() => setSelectedDate(null)}><X size={20} /></button>
+            </div>
+            <div className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
+              <label>
+                ผู้รับบริการทั้งหมด (คน):
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={form.total_patients}
+                  onChange={e => setForm({ ...form, total_patients: Number(e.target.value) })}
+                />
+              </label>
+              <label>
+                จำนวนเงินสดที่เก็บได้ (บาท):
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  required
+                  value={form.cash_collected}
+                  onChange={e => setForm({ ...form, cash_collected: Number(e.target.value) })}
+                />
+              </label>
+              <label>
+                จำนวนผู้รับบริการสิทธิ UC (คน):
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={form.uc_count}
+                  onChange={e => setForm({ ...form, uc_count: Number(e.target.value) })}
+                />
+              </label>
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn secondary" onClick={() => setSelectedDate(null)}>ยกเลิก</button>
+              <button className="btn primary" disabled={saving}>
+                {saving ? 'กำลังบันทึก...' : 'บันทึกข้อมูล'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
-  );
-};
+  )
+}
