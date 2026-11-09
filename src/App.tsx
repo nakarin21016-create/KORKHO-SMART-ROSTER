@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   Activity, CalendarDays, CircleDollarSign, FileText,
   LayoutDashboard, LogOut, Menu, Plus, Search, Settings, ShieldCheck,
-  Users, X, Pencil, UserRound, Clock3, AlertCircle, Save, Loader2, Table, Printer, UserCheck, Trash2, ArrowUp, ArrowDown, ListOrdered, Building, Database, KeyRound, Download
+  Users, X, Pencil, UserRound, Clock3, AlertCircle, Save, Loader2, Table, Printer, UserCheck, Trash2, ArrowUp, ArrowDown, ListOrdered, Building, Database, KeyRound, Download,ClipboardList
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from './lib/supabase'
 import type { Staff, StaffType } from './types'
+import { WorkSummary } from './components/WorkSummary'
 
-type Section = 'dashboard' | 'staff' | 'roster' | 'compensation' | 'documents' | 'settings'
+type Section = 'dashboard' | 'staff' | 'roster' | 'work-summary' | 'compensation' | 'documents' | 'settings'
 
 interface Signer {
   id: string
@@ -23,6 +24,7 @@ const menu: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'compensation', label: 'ค่าตอบแทน', icon: CircleDollarSign },
   { id: 'documents', label: 'ใบเบิกและเอกสาร', icon: FileText },
   { id: 'settings', label: 'ตั้งค่าระบบ', icon: Settings },
+  { id: 'work-summary', label: 'สรุปผลการปฏิบัติงาน', icon: ClipboardList },
 ]
 
 const emptyForm = {
@@ -336,6 +338,7 @@ export default function App() {
           {section === 'staff' && <StaffPage staff={filteredStaff} allCount={staff.length} search={search} setSearch={setSearch}
             loading={loading} onAdd={openAdd} onEdit={openEdit} onToggle={toggleStatus} onReorder={openReorderModal} isAdmin={userRole === 'admin'}/>}
           {section === 'roster' && <RosterCalendarPage staff={staff} isAdmin={userRole === 'admin'} />}
+          {section === 'work-summary' && <WorkSummary/>}
           {section === 'compensation' && <CompensationPage staff={staff} />}
           {section === 'documents' && <DocumentsPage staff={staff} />}
           {section === 'settings' && <SettingsPage userEmail={session.user.email} userRole={userRole} staffCount={staff.length} />}
