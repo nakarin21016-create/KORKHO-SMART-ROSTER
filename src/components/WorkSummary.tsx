@@ -10,9 +10,17 @@ interface WorkSummaryRecord {
   uc_count: number
 }
 
+interface StaffAssignment {
+  staff_id: string
+  first_name: string
+  last_name: string
+  shift_type: string
+}
+
 export function WorkSummary() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [summaryData, setSummaryData] = useState<Record<string, WorkSummaryRecord>>({})
+  const [rosterData, setRosterData] = useState<Record<string, StaffAssignment[]>>({})
   const [loading, setLoading] = useState(false)
   
   // State สำหรับ Modal กรอกตัวเลขประจำวัน
@@ -27,28 +35,60 @@ export function WorkSummary() {
   const firstDayIndex = new Date(year, month, 1).getDay()
 
   useEffect(() => {
-    void loadMonthlySummary()
+    void loadMonthlyData()
   }, [year, month])
 
-  async function loadMonthlySummary() {
+  async function loadMonthlyData() {
     if (!supabase) return
     setLoading(true)
 
     const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`
     const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`
 
-    const { data } = await supabase
+    // 1. โหลดข้อมูลสรุปผลงาน
+    const { data: summaryList } = await supabase
       .from('work_summaries')
       .select('*')
       .gte('work_date', startDate)
       .lte('work_date', endDate)
 
-    const map: Record<string, WorkSummaryRecord> = {}
-    data?.forEach((item: WorkSummaryRecord) => {
-      map[item.work_date] = item
+    const summaryMap: Record<string, WorkSummaryRecord> = {}
+    summaryList?.forEach((item: WorkSummaryRecord) => {
+      summaryMap[item.work_date] = item
     })
+    setSummaryData(summaryMap)
 
-    setSummaryData(map)
+    // 2. ดึงรายชื่อผู้ขึ้นเวรจากตารางเวรประจำเดือน
+    const { data: schedule } = await supabase
+      .from('duty_schedules')
+      .select('id')
+      .eq('schedule_year', year)
+      .eq('schedule_month', month + 1)
+      .maybeSingle()
+
+    if (schedule) {
+      const { data: assignments } = await supabase
+        .from('duty_assignments')
+        .select('duty_date, shift_type, staff:staff_id(id, first_name, last_name)')
+        .eq('schedule_id', schedule.id)
+
+      const rosterMap: Record<string, StaffAssignment[]> = {}
+      assignments?.forEach((item: any) => {
+        if (!rosterMap[item.duty_date]) rosterMap[item.duty_date] = []
+        if (item.staff) {
+          rosterMap[item.duty_date].push({
+            staff_id: item.staff.id,
+            first_name: item.staff.first_name,
+            last_name: item.staff.last_name,
+            shift_type: item.shift_type
+          })
+        }
+      })
+      setRosterData(rosterMap)
+    } else {
+      setRosterData({})
+    }
+
     setLoading(false)
   }
 
@@ -85,7 +125,7 @@ export function WorkSummary() {
     setSaving(false)
     if (!error) {
       setSelectedDate(null)
-      await loadMonthlySummary()
+      await loadMonthlyData()
     }
   }
 
@@ -100,8 +140,74 @@ export function WorkSummary() {
     return { patients, cash, uc }
   }, [summaryData])
 
+  // เตรียมข้อมูลสำหรับตารางพิมพ์สรุปผลงาน
+  const printRows = useMemo(() => {
+    const rows = []
+    for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+      const monthStr = String(month + 1).padStart(2, '0')
+      const dayStr = String(dayNum).padStart(2, '0')
+      const dateStr = `${year}-${monthStr}-${dayStr}`
+      
+      const summary = summaryData[dateStr] || { total_patients: 0, cash_collected: 0, uc_count: 0 }
+      const staffList = rosterData[dateStr] || []
+
+      rows.push({
+        dayNum,
+        dateStr,
+        staffList,
+        summary
+      })
+    }
+    return rows
+  }, [daysInMonth, year, month, summaryData, rosterData])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 8mm;
+          }
+          body * {
+            visibility: hidden;
+          }
+          .sidebar, .topbar, .page-heading, .stats-grid, .calendar-panel, .no-print {
+            display: none !important;
+          }
+          .print-area, .print-area * {
+            visibility: visible;
+          }
+          .print-area {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background: transparent !important;
+          }
+          table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            font-size: 11px !important;
+          }
+          th, td {
+            border: 1px solid #000000 !important;
+            padding: 4px 6px !important;
+            vertical-align: top !important;
+            line-height: 1.3 !important;
+          }
+          th {
+            background-color: #f1f5f9 !important;
+            text-align: center !important;
+            font-weight: bold !important;
+          }
+        }
+      `}</style>
+
       {/* Header */}
       <div className="page-heading no-print">
         <div>
@@ -143,7 +249,7 @@ export function WorkSummary() {
       </div>
 
       {/* ปฏิทินแสดงและกรอกข้อมูล */}
-      <div className="panel no-print" style={{ backgroundColor: '#ffffff', padding: '20px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+      <div className="panel calendar-panel no-print" style={{ backgroundColor: '#ffffff', padding: '20px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Calendar size={20} /> ปฏิทินสรุปผลงาน: {currentDate.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}
@@ -219,6 +325,53 @@ export function WorkSummary() {
             </div>
           </>
         )}
+      </div>
+
+      {/* ตารางพิมพ์สรุปผลงาน (ตรงตามรูปแบบเอกสารแนบ 100%) */}
+      <div className="print-area panel" style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>
+            สรุปผลการปฏิบัติงานนอกเวลาราชการ
+          </h2>
+          <p style={{ fontSize: '13px', margin: '4px 0 0 0' }}>
+            โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค ประจำเดือน {currentDate.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}
+          </p>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style={{ width: '45px' }}>วันที่</th>
+              <th style={{ width: '220px' }}>ชื่อผู้ปฏิบัติงาน</th>
+              <th>ผลการปฏิบัติงาน</th>
+              <th style={{ width: '120px' }}>ลายมือชื่อ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {printRows.map(row => (
+              <tr key={row.dayNum}>
+                <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{row.dayNum}</td>
+                <td>
+                  {row.staffList.length > 0 ? (
+                    row.staffList.map((s, idx) => (
+                      <div key={idx} style={{ marginBottom: '2px' }}>
+                        {s.first_name} {s.last_name}
+                      </div>
+                    ))
+                  ) : (
+                    <span style={{ color: '#94a3b8' }}>-</span>
+                  )}
+                </td>
+                <td>
+                  <div>จำนวนผู้รับบริการทั้งหมด .....<b>{row.summary.total_patients || '0'}</b>..... ราย</div>
+                  <div style={{ textIndent: '12px' }}>1. ผู้ป่วยเก็บเงินได้ .....<b>{row.summary.cash_collected || '0'}</b>..... ราย</div>
+                  <div style={{ textIndent: '12px' }}>2. ผู้ป่วย UC .....<b>{row.summary.uc_count || '0'}</b>..... ราย</div>
+                </td>
+                <td></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* Modal ป๊อปอัพสำหรับกรอกตัวเลขประจำวัน */}
