@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   Activity, CalendarDays, CircleDollarSign, FileText,
   LayoutDashboard, LogOut, Menu, Plus, Search, Settings, ShieldCheck,
-  Users, X, Pencil, UserRound, AlertCircle, Save, Loader2, Printer, UserCheck, ArrowUp, ArrowDown, ListOrdered, Building, Database, KeyRound, Download, ClipboardList, ChevronLeft, ChevronRight
+  Users, X, Pencil, UserRound, AlertCircle, Save, Loader2, Printer, UserCheck, ArrowUp, ArrowDown, ListOrdered, Building, Database, KeyRound, Download, ClipboardList
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from './lib/supabase'
 import type { Staff, StaffType } from './types'
@@ -337,7 +337,7 @@ export default function App() {
           {section === 'dashboard' && <Dashboard staff={staff} onNavigate={setSection}/>}
           {section === 'staff' && <StaffPage staff={filteredStaff} search={search} setSearch={setSearch}
             loading={loading} onAdd={openAdd} onEdit={openEdit} onToggle={toggleStatus} onReorder={openReorderModal} isAdmin={userRole === 'admin'}/>}
-          {section === 'roster' && <RosterCalendarPage staff={staff} isAdmin={userRole === 'admin'} />}
+          {section === 'roster' && <RosterCalendarPage />}
           {section === 'work-summary' && <WorkSummary />}
           {section === 'compensation' && <CompensationPage />}
           {section === 'documents' && <DocumentsPage staff={staff} />}
@@ -416,223 +416,6 @@ export default function App() {
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-function RosterCalendarPage({ staff, isAdmin }: { staff: Staff[]; isAdmin: boolean }) {
-  const [currentDate, setCurrentDate] = useState(new Date())
-  const [selectedStaff, setSelectedStaff] = useState<string>('')
-  const [shiftType, setShiftType] = useState<'morning' | 'afternoon'>('morning')
-  const [dutyMap, setDutyMap] = useState<Record<string, string[]>>({})
-  const [loading, setLoading] = useState(false)
-
-  const year = currentDate.getFullYear()
-  const month = currentDate.getMonth()
-
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const firstDayIndex = new Date(year, month, 1).getDay()
-
-  useEffect(() => {
-    void loadMonthlyRoster()
-  }, [year, month])
-
-  async function loadMonthlyRoster() {
-    if (!supabase) return
-    setLoading(true)
-    const { data: schedule } = await supabase
-      .from('duty_schedules')
-      .select('id')
-      .eq('schedule_year', year)
-      .eq('schedule_month', month + 1)
-      .maybeSingle()
-
-    if (schedule) {
-      const { data: assignments } = await supabase
-        .from('duty_assignments')
-        .select('*')
-        .eq('schedule_id', schedule.id)
-
-      const map: Record<string, string[]> = {}
-      assignments?.forEach((item: any) => {
-        const key = `${item.duty_date}_${item.shift_type}`
-        if (!map[key]) map[key] = []
-        map[key].push(item.staff_id)
-      })
-      setDutyMap(map)
-    } else {
-      setDutyMap({})
-    }
-    setLoading(false)
-  }
-
-  async function handleAssignDuty(dateStr: string) {
-    if (!isAdmin || !selectedStaff || !supabase) return
-
-    let { data: schedule } = await supabase
-      .from('duty_schedules')
-      .select('id')
-      .eq('schedule_year', year)
-      .eq('schedule_month', month + 1)
-      .maybeSingle()
-
-    if (!schedule) {
-      const { data: newSchedule } = await supabase
-        .from('duty_schedules')
-        .insert({ schedule_year: year, schedule_month: month + 1 })
-        .select('id')
-        .single()
-      schedule = newSchedule
-    }
-
-    if (!schedule) return
-
-    const key = `${dateStr}_${shiftType}`
-    const currentList = dutyMap[key] || []
-
-    if (currentList.includes(selectedStaff)) {
-      await supabase
-        .from('duty_assignments')
-        .delete()
-        .eq('schedule_id', schedule.id)
-        .eq('duty_date', dateStr)
-        .eq('shift_type', shiftType)
-        .eq('staff_id', selectedStaff)
-    } else {
-      await supabase.from('duty_assignments').insert({
-        schedule_id: schedule.id,
-        duty_date: dateStr,
-        shift_type: shiftType,
-        staff_id: selectedStaff,
-      })
-    }
-
-    await loadMonthlyRoster()
-  }
-
-  const getStaffName = (staffId: string) => {
-    const s = staff.find(person => person.id === staffId)
-    return s ? `${s.first_name}` : 'เจ้าหน้าที่'
-  }
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div className="page-heading no-print">
-        <div>
-          <div className="eyebrow font-semibold">ROSTER MANAGEMENT</div>
-          <h1 className="text-2xl font-bold">จัดตารางเวรประจำเดือน</h1>
-          <p className="text-gray-600">เลือกรายชื่อเจ้าหน้าที่ ผลัดเวร แล้วคลิกเลือกวันที่บนปฏิทินเพื่อเพิ่ม/ลบเวร</p>
-        </div>
-      </div>
-
-      {isAdmin && (
-        <div className="panel no-print" style={{ backgroundColor: '#ffffff', padding: '16px 20px', borderRadius: '12px', border: '1px solid #cbd5e1', display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
-          <div>
-            <label style={{ fontSize: '12.5px', fontWeight: 500, color: '#475569', display: 'block', marginBottom: '4px' }}>1. เลือกเจ้าหน้าที่:</label>
-            <select
-              value={selectedStaff}
-              onChange={e => setSelectedStaff(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13.5px', minWidth: '220px' }}
-            >
-              <option value="">-- เลือกรายชื่อเจ้าหน้าที่ --</option>
-              {staff.filter(s => s.status === 'active').map(s => (
-                <option key={s.id} value={s.id}>{s.first_name} {s.last_name} ({s.staff_type})</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label style={{ fontSize: '12.5px', fontWeight: 500, color: '#475569', display: 'block', marginBottom: '4px' }}>2. เลือกผลัดเวร:</label>
-            <select
-              value={shiftType}
-              onChange={e => setShiftType(e.target.value as 'morning' | 'afternoon')}
-              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13.5px' }}
-            >
-              <option value="morning">เวรเช้า (ช)</option>
-              <option value="afternoon">เวรบ่าย (บ)</option>
-            </select>
-          </div>
-
-          {!selectedStaff && (
-            <div style={{ fontSize: '12.5px', color: '#0284c7', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '16px' }}>
-              <AlertCircle size={15} /> กรุณาเลือกรายชื่อและผลัดเวรก่อนคลิกใส่วันในปฏิทิน
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="panel no-print" style={{ backgroundColor: '#ffffff', padding: '20px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#0f172a' }}>
-            ตารางเวรประจำเดือน {currentDate.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}
-          </h2>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={() => setCurrentDate(new Date(year, month - 1, 1))} className="btn secondary" style={{ padding: '6px 12px' }}>
-              <ChevronLeft size={16} /> เดือนก่อน
-            </button>
-            <button onClick={() => setCurrentDate(new Date(year, month + 1, 1))} className="btn secondary" style={{ padding: '6px 12px' }}>
-              เดือนถัดไป <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
-
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <Loader2 className="animate-spin" style={{ margin: '0 auto 8px auto' }} />
-            <p>กำลังโหลดข้อมูลตารางเวร...</p>
-          </div>
-        ) : (
-          <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', textAlign: 'center', fontWeight: 'bold', color: '#475569', marginBottom: '8px' }}>
-              {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map(d => <div key={d}>{d}</div>)}
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px' }}>
-              {Array.from({ length: firstDayIndex }).map((_, i) => <div key={`empty-${i}`} />)}
-              {Array.from({ length: daysInMonth }).map((_, i) => {
-                const dayNum = i + 1
-                const monthStr = String(month + 1).padStart(2, '0')
-                const dayStr = String(dayNum).padStart(2, '0')
-                const dateStr = `${year}-${monthStr}-${dayStr}`
-
-                const morningStaffIds = dutyMap[`${dateStr}_morning`] || []
-                const afternoonStaffIds = dutyMap[`${dateStr}_afternoon`] || []
-
-                return (
-                  <div
-                    key={dayNum}
-                    onClick={() => handleAssignDuty(dateStr)}
-                    style={{
-                      padding: '8px',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '8px',
-                      minHeight: '95px',
-                      backgroundColor: '#ffffff',
-                      cursor: isAdmin && selectedStaff ? 'pointer' : 'default',
-                      transition: 'background-color 0.15s',
-                    }}
-                    className={isAdmin && selectedStaff ? 'hover:bg-blue-50' : ''}
-                  >
-                    <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#334155', marginBottom: '4px' }}>{dayNum}</div>
-                    
-                    {morningStaffIds.length > 0 && (
-                      <div style={{ fontSize: '11px', backgroundColor: '#e0f2fe', color: '#0369a1', padding: '2px 4px', borderRadius: '4px', marginBottom: '3px' }}>
-                        <b>เช้า:</b> {morningStaffIds.map(id => getStaffName(id)).join(', ')}
-                      </div>
-                    )}
-
-                    {afternoonStaffIds.length > 0 && (
-                      <div style={{ fontSize: '11px', backgroundColor: '#fef3c7', color: '#b45309', padding: '2px 4px', borderRadius: '4px' }}>
-                        <b>บ่าย:</b> {afternoonStaffIds.map(id => getStaffName(id)).join(', ')}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </>
-        )}
-      </div>
     </div>
   )
 }
@@ -1401,6 +1184,15 @@ function StaffPage({
         )}
       </div>
     </>
+  )
+}
+
+function RosterCalendarPage() {
+  return (
+    <div className="panel no-print" style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+      <h2 className="text-xl font-bold mb-2">จัดตารางเวรประจำเดือน</h2>
+      <p className="text-gray-600">ระบบจัดตารางเวรปฏิบัติงานนอกเวลาราชการ</p>
+    </div>
   )
 }
 
