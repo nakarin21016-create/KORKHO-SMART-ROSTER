@@ -221,32 +221,41 @@ export function WorkSummary() {
       </div>
 
       {/* สรุปยอดรวมประจำเดือน Cards */}
-      <div className="stats-grid no-print">
-        <div className="stat-card">
-          <div className="stat-icon text-blue-600"><UserCheck size={24} /></div>
-          <div>
-            <div className="stat-label">ผู้รับบริการทั้งหมด</div>
-            <div className="stat-value">{monthlyTotals.patients.toLocaleString()}</div>
-            <div className="stat-sub">ราย/เดือน</div>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon text-emerald-600"><Banknote size={24} /></div>
-          <div>
-            <div className="stat-label">ผู้ป่วยเก็บเงินได้</div>
-            <div className="stat-value">{monthlyTotals.cash.toLocaleString()}</div>
-            <div className="stat-sub">ราย/เดือน</div>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon text-amber-600"><CreditCard size={24} /></div>
-          <div>
-            <div className="stat-label">สิทธิ UC / ประกันสุขภาพ</div>
-            <div className="stat-value">{monthlyTotals.uc.toLocaleString()}</div>
-            <div className="stat-sub">ราย/เดือน</div>
-          </div>
-        </div>
-      </div>
+      <div 
+  className="stats-grid no-print" 
+  style={{ 
+    display: 'grid', 
+    gridTemplateColumns: 'repeat(3, 1fr)', 
+    gap: '16px' 
+  }}
+>
+  <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px' }}>
+    <div className="stat-icon text-blue-600"><UserCheck size={28} /></div>
+    <div>
+      <div className="stat-label text-gray-500 text-sm">ผู้รับบริการทั้งหมด</div>
+      <div className="stat-value text-2xl font-bold">{monthlyTotals.patients.toLocaleString()}</div>
+      <div className="stat-sub text-xs text-gray-400">ราย/เดือน</div>
+    </div>
+  </div>
+
+  <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px' }}>
+    <div className="stat-icon text-emerald-600"><Banknote size={28} /></div>
+    <div>
+      <div className="stat-label text-gray-500 text-sm">ผู้ป่วยเก็บเงินได้</div>
+      <div className="stat-value text-2xl font-bold">{monthlyTotals.cash.toLocaleString()}</div>
+      <div className="stat-sub text-xs text-gray-400">ราย/เดือน</div>
+    </div>
+  </div>
+
+  <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px' }}>
+    <div className="stat-icon text-amber-600"><CreditCard size={28} /></div>
+    <div>
+      <div className="stat-label text-gray-500 text-sm">สิทธิ UC / ประกันสุขภาพ</div>
+      <div className="stat-value text-2xl font-bold">{monthlyTotals.uc.toLocaleString()}</div>
+      <div className="stat-sub text-xs text-gray-400">ราย/เดือน</div>
+    </div>
+  </div>
+</div>
 
       {/* ปฏิทินแสดงและกรอกข้อมูล */}
       <div className="panel calendar-panel no-print" style={{ backgroundColor: '#ffffff', padding: '20px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
