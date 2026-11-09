@@ -2,13 +2,12 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   Activity, CalendarDays, CircleDollarSign, FileText,
   LayoutDashboard, LogOut, Menu, Plus, Search, Settings, ShieldCheck,
-  Users, X, Pencil, UserRound, AlertCircle, Save, Loader2, Printer, UserCheck, ArrowUp, ArrowDown, ListOrdered, Building, Database, KeyRound, Download, ClipboardList
+  Users, X, Pencil, UserRound, Clock3, AlertCircle, Save, Loader2, Table, Printer, UserCheck, Trash2, ArrowUp, ArrowDown, ListOrdered, Building, Database, KeyRound, Download
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from './lib/supabase'
 import type { Staff, StaffType } from './types'
-import { WorkSummary } from './components/WorkSummary'
 
-type Section = 'dashboard' | 'staff' | 'roster' | 'work-summary' | 'compensation' | 'documents' | 'settings'
+type Section = 'dashboard' | 'staff' | 'roster' | 'compensation' | 'documents' | 'settings'
 
 interface Signer {
   id: string
@@ -21,7 +20,6 @@ const menu: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'dashboard', label: 'ภาพรวมระบบ', icon: LayoutDashboard },
   { id: 'staff', label: 'จัดการบุคลากร', icon: Users },
   { id: 'roster', label: 'จัดตารางเวร', icon: CalendarDays },
-  { id: 'work-summary', label: 'สรุปผลการปฏิบัติงาน', icon: ClipboardList },
   { id: 'compensation', label: 'ค่าตอบแทน', icon: CircleDollarSign },
   { id: 'documents', label: 'ใบเบิกและเอกสาร', icon: FileText },
   { id: 'settings', label: 'ตั้งค่าระบบ', icon: Settings },
@@ -335,11 +333,10 @@ export default function App() {
         <div className="page-content">
           {error && <div className="alert error no-print"><AlertCircle size={17}/>{error}<button onClick={() => setError('')}><X size={15}/></button></div>}
           {section === 'dashboard' && <Dashboard staff={staff} onNavigate={setSection}/>}
-          {section === 'staff' && <StaffPage staff={filteredStaff} search={search} setSearch={setSearch}
+          {section === 'staff' && <StaffPage staff={filteredStaff} allCount={staff.length} search={search} setSearch={setSearch}
             loading={loading} onAdd={openAdd} onEdit={openEdit} onToggle={toggleStatus} onReorder={openReorderModal} isAdmin={userRole === 'admin'}/>}
-          {section === 'roster' && <RosterCalendarPage />}
-          {section === 'work-summary' && <WorkSummary />}
-          {section === 'compensation' && <CompensationPage />}
+          {section === 'roster' && <RosterCalendarPage staff={staff} isAdmin={userRole === 'admin'} />}
+          {section === 'compensation' && <CompensationPage staff={staff} />}
           {section === 'documents' && <DocumentsPage staff={staff} />}
           {section === 'settings' && <SettingsPage userEmail={session.user.email} userRole={userRole} staffCount={staff.length} />}
         </div>
@@ -466,6 +463,7 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }} className="no-print">
+        {/* ข้อมูลหน่วยงาน */}
         <form onSubmit={handleSaveSettings} className="panel" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '20px', border: '1px solid #cbd5e1' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Building size={18} /> ข้อมูลสถานพยาบาล / หน่วยงาน
@@ -519,6 +517,7 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
           </button>
         </form>
 
+        {/* ผู้ใช้งาน & ระบบความปลอดภัย */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div className="panel" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '20px', border: '1px solid #cbd5e1' }}>
             <h3 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -537,6 +536,7 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
             </div>
           </div>
 
+          {/* การจัดการข้อมูลและสำรอง */}
           <div className="panel" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '20px', border: '1px solid #cbd5e1' }}>
             <h3 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Database size={18} /> สำรองข้อมูล & ฐานข้อมูล
@@ -586,6 +586,9 @@ function DocumentsPage({ staff }: { staff: Staff[] }) {
 
   const [dutyMap, setDutyMap] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState<boolean>(false)
+  const [isSaved, setIsSaved] = useState<boolean>(false)
+  const [saving, setSaving] = useState<boolean>(false)
+  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
 
   const [signerModalOpen, setSignerModalOpen] = useState<boolean>(false)
   const [editingSigner, setEditingSigner] = useState<Signer | null>(null)
@@ -622,6 +625,7 @@ function DocumentsPage({ staff }: { staff: Staff[] }) {
   async function loadRosterData() {
     if (!supabase) return
     setLoading(true)
+    setIsSaved(false)
     try {
       const { data: schedule } = await supabase
         .from('duty_schedules')
@@ -731,519 +735,1430 @@ function DocumentsPage({ staff }: { staff: Staff[] }) {
       name: s.name, 
       position: s.position, 
       role: isStandardRole ? s.role : 'custom',
-      customRole: isStandardRole ? '' : s.role 
+      customRole: isStandardRole ? '' : s.role
     })
     setSignerModalOpen(true)
   }
 
-  function handleSaveSigner(e: FormEvent) {
+  function saveSigner(e: FormEvent) {
     e.preventDefault()
-    if (!editingSigner) return
+    if (!signerForm.name.trim() || !signerForm.position.trim()) return
+
     const finalRole = signerForm.role === 'custom' ? signerForm.customRole.trim() : signerForm.role
-    setSigners(prev => prev.map(item => item.id === editingSigner.id ? {
-      ...item,
-      name: signerForm.name.trim(),
-      position: signerForm.position.trim(),
-      role: finalRole || 'ผู้ลงนาม'
-    } : item))
+    if (!finalRole) return
+
+    if (editingSigner) {
+      setSigners(prev => prev.map(item => item.id === editingSigner.id ? { ...item, name: signerForm.name.trim(), position: signerForm.position.trim(), role: finalRole } : item))
+    } else {
+      const newSigner: Signer = {
+        id: Date.now().toString(),
+        name: signerForm.name.trim(),
+        position: signerForm.position.trim(),
+        role: finalRole,
+      }
+      setSigners(prev => [...prev, newSigner])
+    }
     setSignerModalOpen(false)
   }
 
-  const controllerSigner = signers.find(s => s.id === selectedController)
-  const checkerSigner = signers.find(s => s.id === selectedChecker)
-  const approverSigner = signers.find(s => s.id === selectedApprover)
-  const payerSigner = signers.find(s => s.id === selectedPayer)
+  function deleteSigner(id: string) {
+    setSigners(prev => prev.filter(s => s.id !== id))
+  }
+
+  function handleSaveBill() {
+    setSaving(true)
+    setTimeout(() => {
+      setSaving(false)
+      setIsSaved(true)
+      setMsg({ text: 'บันทึกใบเบิกเงินเรียบร้อยแล้ว สามารถกดปริ้นเอกสารได้', type: 'success' })
+    }, 500)
+  }
+
+  const thaiMonthName = new Date(year, month - 1).toLocaleString('th-TH', { month: 'long' })
+  const thaiYear = year + 543
+
+  const controllerObj = signers.find(s => s.id === selectedController)
+  const checkerObj = signers.find(s => s.id === selectedChecker)
+  const approverObj = signers.find(s => s.id === selectedApprover)
+  const payerObj = signers.find(s => s.id === selectedPayer)
 
   return (
     <>
       <div className="page-heading no-print">
         <div>
-          <div className="eyebrow font-semibold">DOCUMENTS & CLAIMS</div>
-          <h1 className="text-2xl font-bold">ใบเบิกเงินค่าตอบแทนและเอกสารสำคัญ</h1>
-          <p className="text-gray-600">สร้างเอกสารหลักฐานการจ่ายเงินค่าตอบแทนการปฏิบัติงานนอกเวลาราชการ</p>
+          <div className="eyebrow font-semibold">REIMBURSEMENT FORM</div>
+          <h1 className="text-2xl font-bold">ออกใบเบิกเงินค่าตอบแทนปฏิบัติงาน (แบบฟอร์มราชการ)</h1>
+          <p className="text-gray-600">เลือกผู้ลงนาม ระบุวันเบิก 2 เท่า บันทึกใบเบิก และพิมพ์เสนอเซ็น</p>
         </div>
-      </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            onClick={() => { setEditingSigner(null); setSignerForm({ name: '', position: '', role: 'ผู้ควบคุม', customRole: '' }); setSignerModalOpen(true) }}
+            className="btn secondary"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <UserCheck size={16} /> จัดการข้อมูลผู้ลงนาม
+          </button>
 
-      <div className="panel mb-6 no-print" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '20px', border: '1px solid #cbd5e1' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '16px' }}>
-          <div>
-            <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '4px' }}>เลือกปี (พ.ศ.):</label>
-            <select value={year} onChange={e => setYear(Number(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13.5px' }}>
-              <option value={2025}>2025 (พ.ศ. 2568)</option>
-              <option value={2026}>2026 (พ.ศ. 2569)</option>
-              <option value={2027}>2027 (พ.ศ. 2570)</option>
-            </select>
-          </div>
-          <div>
-            <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '4px' }}>เลือกเดือน:</label>
-            <select value={month} onChange={e => setMonth(Number(e.target.value))} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13.5px' }}>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                <option key={m} value={m}>เดือน{new Date(2026, m - 1, 1).toLocaleDateString('th-TH', { month: 'long' })}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '4px' }}>เลขที่คำสั่ง:</label>
-            <input value={orderNo} onChange={e => setOrderNo(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13.5px' }} />
-          </div>
-          <div>
-            <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155', display: 'block', marginBottom: '4px' }}>ลงวันที่คำสั่ง:</label>
-            <input value={orderDate} onChange={e => setOrderDate(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13.5px' }} />
-          </div>
-        </div>
+          <button
+            onClick={handleSaveBill}
+            disabled={saving || loading}
+            className="btn primary"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#16a34a' }}
+          >
+            {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+            {saving ? 'กำลังบันทึก...' : 'บันทึกใบเบิกเงิน'}
+          </button>
 
-        <div style={{ backgroundColor: '#f8fafc', padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
-          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#0f172a', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <AlertCircle size={16} className="text-amber-500" /> กำหนดวันปฏิบัติงานอัตรา 2 เท่า (วันหยุดนักขัตฤกษ์พิเศษ):
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-            {daysInMonthList.map(d => (
-              <button
-                key={d.day}
-                type="button"
-                onClick={() => toggleDoubleRateDay(d.day)}
-                style={{
-                  padding: '3px 8px',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  fontWeight: 500,
-                  border: '1px solid',
-                  cursor: 'pointer',
-                  backgroundColor: doubleRateDays.includes(d.day) ? '#ef4444' : '#ffffff',
-                  color: doubleRateDays.includes(d.day) ? '#ffffff' : '#334155',
-                  borderColor: doubleRateDays.includes(d.day) ? '#dc2626' : '#cbd5e1',
-                }}
-              >
-                {d.day} ({d.dayOfWeekName})
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
-          <div>
-            <label style={{ fontSize: '12.5px', fontWeight: 500, color: '#475569', display: 'block', marginBottom: '2px' }}>1. ผู้ควบคุมการปฏิบัติงาน:</label>
-            <select value={selectedController} onChange={e => setSelectedController(e.target.value)} style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px' }}>
-              {signers.map(s => <option key={s.id} value={s.id}>{s.name} ({s.position})</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{ fontSize: '12.5px', fontWeight: 500, color: '#475569', display: 'block', marginBottom: '2px' }}>2. ผู้ตรวจถูกต้อง:</label>
-            <select value={selectedChecker} onChange={e => setSelectedChecker(e.target.value)} style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px' }}>
-              {signers.map(s => <option key={s.id} value={s.id}>{s.name} ({s.position})</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{ fontSize: '12.5px', fontWeight: 500, color: '#475569', display: 'block', marginBottom: '2px' }}>3. ผู้อนุมัติให้จ่ายได้:</label>
-            <select value={selectedApprover} onChange={e => setSelectedApprover(e.target.value)} style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px' }}>
-              {signers.map(s => <option key={s.id} value={s.id}>{s.name} ({s.position})</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{ fontSize: '12.5px', fontWeight: 500, color: '#475569', display: 'block', marginBottom: '2px' }}>4. ผู้จ่ายเงิน:</label>
-            <select value={selectedPayer} onChange={e => setSelectedPayer(e.target.value)} style={{ width: '100%', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px' }}>
-              {signers.map(s => <option key={s.id} value={s.id}>{s.name} ({s.position})</option>)}
-            </select>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            {signers.map(s => (
-              <button key={s.id} type="button" onClick={() => openEditSigner(s)} className="btn secondary" style={{ fontSize: '12px', padding: '4px 8px' }}>
-                <Pencil size={13} /> แก้ไขชื่อ {s.role}
-              </button>
-            ))}
-          </div>
-          <button onClick={() => window.print()} className="btn primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Printer size={16} /> พิมพ์ใบเบิกเงิน (A4 แนวตั้ง/แนวนอน)
+          <button
+            onClick={() => window.print()}
+            disabled={!isSaved}
+            className="btn secondary"
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px',
+              opacity: isSaved ? 1 : 0.5,
+              cursor: isSaved ? 'pointer' : 'not-allowed'
+            }}
+            title={isSaved ? 'พิมพ์ใบเบิก' : 'กรุณากดบันทึกใบเบิกเงินก่อน'}
+          >
+            <Printer size={16} /> พิมพ์เสนอเซ็น
           </button>
         </div>
       </div>
 
-      <div className="print-area panel" style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-        <div className="doc-title-box" style={{ textAlign: 'center', marginBottom: '12px' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>
-            หลักฐานการจ่ายเงินตอบแทนการปฏิบัติงานนอกเวลาราชการ
+      {msg && (
+        <div className={`alert ${msg.type === 'error' ? 'error' : 'success'} mb-4 no-print`}>
+          <AlertCircle size={17} />
+          {msg.text}
+          <button onClick={() => setMsg(null)}><X size={15} /></button>
+        </div>
+      )}
+
+      <div className="panel no-print mb-6" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '20px', border: '1px solid #cbd5e1' }}>
+        <h3 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <UserCheck size={18} /> 1. เลือกผู้ลงนามและข้อมูลคำสั่งเสนอเซ็น
+        </h3>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px' }}>
+          <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
+            ประจำเดือน:
+            <select value={month} onChange={e => setMonth(Number(e.target.value))} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }}>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                <option key={m} value={m}>{new Date(2026, m - 1).toLocaleString('th-TH', { month: 'long' })}</option>
+              ))}
+            </select>
+          </label>
+
+          <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
+            ปี พ.ศ.:
+            <select value={year} onChange={e => setYear(Number(e.target.value))} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }}>
+              <option value={2026}>พ.ศ. 2569</option>
+              <option value={2025}>พ.ศ. 2568</option>
+            </select>
+          </label>
+
+          <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
+            คำสั่งที่:
+            <input value={orderNo} onChange={e => setOrderNo(e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} />
+          </label>
+
+          <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
+            ลงวันที่คำสั่ง:
+            <input value={orderDate} onChange={e => setOrderDate(e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} />
+          </label>
+        </div>
+
+        <hr style={{ margin: '16px 0', borderColor: '#e2e8f0' }} />
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+          <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
+            1. ผู้ลงนาม (ผู้ควบคุม):
+            <select value={selectedController} onChange={e => setSelectedController(e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }}>
+              <option value="">-- ไม่ระบุ (เว้นว่าง/ไม่แสดงชื่อ) --</option>
+              {signers.map(s => (
+                <option key={s.id} value={s.id}>{s.name} ({s.position})</option>
+              ))}
+            </select>
+          </label>
+
+          <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
+            2. ผู้ลงนาม (ตรวจถูกต้อง):
+            <select value={selectedChecker} onChange={e => setSelectedChecker(e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }}>
+              <option value="">-- ไม่ระบุ (เว้นว่าง/ไม่แสดงชื่อ) --</option>
+              {signers.map(s => (
+                <option key={s.id} value={s.id}>{s.name} ({s.position})</option>
+              ))}
+            </select>
+          </label>
+
+          <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
+            3. ผู้ลงนาม (ผู้อนุมัติให้จ่ายได้):
+            <select value={selectedApprover} onChange={e => setSelectedApprover(e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }}>
+              <option value="">-- ไม่ระบุ (เว้นว่าง/ไม่แสดงชื่อ) --</option>
+              {signers.map(s => (
+                <option key={s.id} value={s.id}>{s.name} ({s.position})</option>
+              ))}
+            </select>
+          </label>
+
+          <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
+            4. ผู้ลงนาม (ผู้จ่ายเงิน):
+            <select value={selectedPayer} onChange={e => setSelectedPayer(e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }}>
+              <option value="">-- ไม่ระบุ (เว้นว่าง/ไม่แสดงชื่อ) --</option>
+              {signers.map(s => (
+                <option key={s.id} value={s.id}>{s.name} ({s.position})</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div style={{ backgroundColor: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+          <h4 style={{ fontSize: '14px', fontWeight: 'bold', margin: '0 0 10px 0', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            ⚡ 2. เลือกวันที่ต้องการเบิก 2 เท่า (คลิกเพื่อเลือก/ยกเลิก):
+          </h4>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {daysInMonthList.map(d => {
+              const isSelected = doubleRateDays.includes(d.day)
+              return (
+                <button
+                  key={`btn-day-${d.day}`}
+                  type="button"
+                  onClick={() => toggleDoubleRateDay(d.day)}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: isSelected ? 'bold' : 'normal',
+                    border: isSelected ? '1px solid #16a34a' : '1px solid #cbd5e1',
+                    backgroundColor: isSelected ? '#dcfce7' : d.isWeekend ? '#e2e8f0' : '#ffffff',
+                    color: isSelected ? '#15803d' : '#334155',
+                    cursor: 'pointer'
+                  }}
+                >
+                  วันที่ {d.day} {isSelected ? '⚡ (2 เท่า)' : ''}
+                </button>
+              )
+            })}
+          </div>
+          {doubleRateDays.length > 0 && (
+            <div style={{ marginTop: '8px', fontSize: '12.5px', color: '#166534', fontWeight: 500 }}>
+              วันที่เลือกเบิก 2 เท่า: <b>{doubleRateDays.join(', ')}</b>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="panel table-panel print-area" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '16px 20px', border: '1px solid #e2e8f0', color: '#000000' }}>
+        <div className="doc-title-box" style={{ textAlign: 'center', marginBottom: '8px' }}>
+          <h2 style={{ fontSize: '15px', fontWeight: 'bold', margin: '0 0 2px 0' }}>
+            หลักฐานการจ่ายเงินค่าตอบแทนปฏิบัติราชการนอกเวลาราชการ
           </h2>
-          <p style={{ fontSize: '13px', margin: '4px 0 0 0' }}>
-            ส่วนราชการ โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค อำเภอเมืองสุรินทร์ จังหวัดสุรินทร์ ประจำเดือน {new Date(year, month - 1, 1).toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}
+          <p style={{ fontSize: '12.5px', margin: '0 0 2px 0' }}>
+            โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค อำเภอเมือง จังหวัดสุรินทร์ ประจำเดือน {thaiMonthName} พ.ศ. {thaiYear}
           </p>
-          <p style={{ fontSize: '12px', color: '#475569', margin: '2px 0 0 0' }}>
-            ตามคำสั่ง ที่ {orderNo} ลงวันที่ {orderDate}
+          <p style={{ fontSize: '11.5px', margin: 0 }}>
+            เบิกตามฎีกา/คำสั่งที่ {orderNo} ลงวันที่ {orderDate}
           </p>
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px 0' }} className="no-print">
-            <Loader2 className="animate-spin" style={{ margin: '0 auto 8px auto' }} />
-            <p>กำลังโหลดข้อมูลตารางเวร...</p>
-          </div>
+          <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>กำลังโหลดข้อมูลใบเบิก...</div>
         ) : (
-          <>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+          <div style={{ width: '100%', overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10px', border: '1px solid #000000' }}>
               <thead>
-                <tr style={{ backgroundColor: '#f1f5f9' }}>
-                  <th style={{ border: '1px solid #000', padding: '4px', textIndent: 0, width: '30px', textAlign: 'center' }} rowSpan={2}>ลำดับ</th>
-                  <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center', width: '130px' }} rowSpan={2}>ชื่อ - สกุล</th>
-                  <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center', width: '110px' }} rowSpan={2}>ตำแหน่ง</th>
-                  <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center', width: '55px' }} rowSpan={2}>อัตรา</th>
-                  <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center' }} colSpan={daysInMonthList.length}>
-                    วันที่ปฏิบัติงาน
-                  </th>
-                  <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center', width: '45px' }} rowSpan={2}>จำนวน (วัน)</th>
-                  <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center', width: '65px' }} rowSpan={2}>จำนวนเงิน (บาท)</th>
-                  <th style={{ border: '1px solid #000', padding: '4px', textAlign: 'center', width: '70px' }} rowSpan={2}>ลายมือชื่อ ผู้รับเงิน</th>
+                <tr style={{ backgroundColor: '#f1f5f9', height: '18px' }}>
+                  <th style={{ border: '1px solid #000', padding: '2px', width: '26px', textAlign: 'center' }} rowSpan={2}>ลำดับ</th>
+                  <th style={{ border: '1px solid #000', padding: '2px', minWidth: '125px', textAlign: 'center' }} rowSpan={2}>ชื่อ</th>
+                  <th style={{ border: '1px solid #000', padding: '2px', minWidth: '95px', textAlign: 'center' }} rowSpan={2}>ตำแหน่ง</th>
+                  <th style={{ border: '1px solid #000', padding: '2px', minWidth: '65px', textAlign: 'center' }} rowSpan={2}>อัตราเงิน<br/>ตอบแทน</th>
+                  <th style={{ border: '1px solid #000', padding: '2px', textAlign: 'center' }} colSpan={daysInMonthList.length}>วันที่ปฏิบัติงานนอกเวลาราชการ</th>
+                  <th style={{ border: '1px solid #000', padding: '2px', width: '36px', textAlign: 'center' }} rowSpan={2}>รวมวัน</th>
+                  <th style={{ border: '1px solid #000', padding: '2px', width: '58px', textAlign: 'center' }} rowSpan={2}>จำนวนเงิน</th>
+                  <th style={{ border: '1px solid #000', padding: '2px', width: '58px', textAlign: 'center' }} colSpan={2}>วันเดือนปี ที่รับเงิน</th>
+                  <th style={{ border: '1px solid #000', padding: '2px', width: '65px', textAlign: 'center' }} rowSpan={2}>ลายมือชื่อ<br/>ผู้รับเงิน</th>
                 </tr>
-                <tr style={{ backgroundColor: '#f1f5f9' }}>
+                <tr style={{ backgroundColor: '#f8fafc', height: '16px' }}>
                   {daysInMonthList.map(d => (
-                    <th key={d.day} className={d.isWeekend ? 'weekend-header' : ''} style={{ border: '1px solid #000', padding: '2px 1px', textAlign: 'center', fontSize: '9px', width: '18px' }}>
+                    <th 
+                      key={`hd-${d.day}`} 
+                      className={d.isWeekend ? 'weekend-header' : ''}
+                      style={{ 
+                        border: '1px solid #000', 
+                        padding: '1px 0', 
+                        textAlign: 'center', 
+                        width: '17px', 
+                        fontSize: '9.5px',
+                        backgroundColor: d.isWeekend ? '#cbd5e1' : 'transparent',
+                        fontWeight: d.isWeekend ? 'bold' : 'normal'
+                      }}
+                    >
                       {d.day}
                     </th>
                   ))}
+                  <th style={{ border: '1px solid #000', padding: '1px', width: '29px', textAlign: 'center', fontSize: '9px' }}>ที่รับเงิน</th>
+                  <th style={{ border: '1px solid #000', padding: '1px', width: '29px', textAlign: 'center', fontSize: '9px' }}>ผู้จ่ายเงิน</th>
                 </tr>
               </thead>
               <tbody>
-                {reportRows.map((row, idx) => {
-                  const staffRowSpan = row.isFirstRow ? 2 : 0
-                  return (
-                    <tr key={`${row.staffId}_${row.shiftType}_${idx}`}>
-                      {row.isFirstRow && (
+                {reportRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={daysInMonthList.length + 9} style={{ border: '1px solid #000', padding: '16px', textAlign: 'center', color: '#64748b' }}>
+                      ไม่พบข้อมูลการจัดเวรในเดือนนี้
+                    </td>
+                  </tr>
+                ) : (
+                  reportRows.map((row, idx) => (
+                    <tr key={`r-${idx}`} style={{ height: '17px' }}>
+                      {row.isFirstRow ? (
                         <>
-                          <td style={{ border: '1px solid #000', textAlign: 'center' }} rowSpan={staffRowSpan}>{row.no}</td>
-                          <td style={{ border: '1px solid #000', paddingLeft: '4px' }} rowSpan={staffRowSpan}>{row.name}</td>
-                          <td style={{ border: '1px solid #000', paddingLeft: '4px' }} rowSpan={staffRowSpan}>{row.position}</td>
+                          <td style={{ border: '1px solid #000', textAlign: 'center' }} rowSpan={2}>{row.no}</td>
+                          <td style={{ border: '1px solid #000', padding: '1px 3px', whiteSpace: 'nowrap' }} rowSpan={2}><b>{row.name}</b></td>
+                          <td style={{ border: '1px solid #000', padding: '1px 3px', fontSize: '9.5px', lineHeight: 1.15 }} rowSpan={2}>{row.position}</td>
                         </>
-                      )}
-                      <td style={{ border: '1px solid #000', textAlign: 'center', fontSize: '9.5px' }}>{row.rateLabel}</td>
-                      {daysInMonthList.map(d => {
-                        const isActive = row.activeDays.includes(d.day)
-                        const isDouble = doubleRateDays.includes(d.day)
-                        return (
-                          <td key={d.day} className={d.isWeekend ? 'weekend-cell' : ''} style={{ border: '1px solid #000', textAlign: 'center', fontWeight: isActive ? 'bold' : 'normal', backgroundColor: isActive && isDouble ? '#fee2e2' : undefined }}>
-                            {isActive ? (row.shiftType === 'เช้า' ? 'ช' : 'บ') : ''}
-                          </td>
-                        )
-                      })}
-                      <td style={{ border: '1px solid #000', textAlign: 'center' }}>{row.totalDays || '-'}</td>
-                      <td style={{ border: '1px solid #000', textAlign: 'right', paddingRight: '4px' }}>
-                        {row.totalAmount > 0 ? row.totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 }) : '-'}
-                      </td>
-                      {row.isFirstRow && (
-                        <td style={{ border: '1px solid #000', textAlign: 'center' }} rowSpan={staffRowSpan}></td>
-                      )}
-                    </tr>
-                  )
-                })}
-                <tr style={{ fontWeight: 'bold', backgroundColor: '#f8fafc' }}>
-                  <td style={{ border: '1px solid #000', textAlign: 'center' }} colSpan={3 + 1 + daysInMonthList.length + 1}>รวมเงินทั้งสิ้น</td>
-                  <td style={{ border: '1px solid #000', textAlign: 'right', paddingRight: '4px' }}>
-                    {grandTotalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
-                  </td>
-                  <td style={{ border: '1px solid #000' }}></td>
-                </tr>
-              </tbody>
-            </table>
+                      ) : null}
 
-            <div className="signature-section" style={{ marginTop: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px', textAlign: 'center' }}>
-              <div>
-                <p style={{ margin: 0 }}>จำนวนเงินตัวอักษร: ({arabicToThaiBaht(grandTotalAmount)})</p>
-                <br />
-                <p style={{ margin: 0 }}>ลงชื่อ....................................................</p>
-                <p style={{ margin: '2px 0 0 0' }}>({controllerSigner?.name})</p>
-                <p style={{ margin: '2px 0 0 0' }}>{controllerSigner?.position}</p>
-                <p style={{ margin: '2px 0 0 0' }}>ผู้ควบคุมการปฏิบัติงาน</p>
-              </div>
-              <div>
-                <br /><br />
-                <p style={{ margin: 0 }}>ลงชื่อ....................................................</p>
-                <p style={{ margin: '2px 0 0 0' }}>({checkerSigner?.name})</p>
-                <p style={{ margin: '2px 0 0 0' }}>{checkerSigner?.position}</p>
-                <p style={{ margin: '2px 0 0 0' }}>ผู้ตรวจถูกต้อง</p>
-              </div>
-              <div>
-                <br /><br />
-                <p style={{ margin: 0 }}>ลงชื่อ....................................................</p>
-                <p style={{ margin: '2px 0 0 0' }}>({approverSigner?.name})</p>
-                <p style={{ margin: '2px 0 0 0' }}>{approverSigner?.position}</p>
-                <p style={{ margin: '2px 0 0 0' }}>ผู้อนุมัติให้จ่ายได้</p>
-              </div>
-              <div>
-                <br /><br />
-                <p style={{ margin: 0 }}>ลงชื่อ....................................................</p>
-                <p style={{ margin: '2px 0 0 0' }}>({payerSigner?.name})</p>
-                <p style={{ margin: '2px 0 0 0' }}>{payerSigner?.position}</p>
-                <p style={{ margin: '2px 0 0 0' }}>ผู้จ่ายเงิน</p>
-              </div>
-            </div>
-          </>
+                      <td style={{ border: '1px solid #000', padding: '1px 3px', fontSize: '9.5px', whiteSpace: 'nowrap' }}>{row.rateLabel}</td>
+
+                      {daysInMonthList.map(d => (
+                        <td 
+                          key={`c-${idx}-${d.day}`} 
+                          className={d.isWeekend ? 'weekend-cell' : ''}
+                          style={{ 
+                            border: '1px solid #000', 
+                            textAlign: 'center', 
+                            fontSize: '9.5px',
+                            backgroundColor: d.isWeekend ? '#e2e8f0' : 'transparent'
+                          }}
+                        >
+                          {row.activeDays.includes(d.day) ? '/' : ''}
+                        </td>
+                      ))}
+
+                      <td style={{ border: '1px solid #000', textAlign: 'center' }}>{row.totalDays}</td>
+                      <td style={{ border: '1px solid #000', textAlign: 'right', paddingRight: '3px' }}>
+                        {row.totalAmount > 0 ? row.totalAmount.toLocaleString('th-TH') : '0'}
+                      </td>
+
+                      {row.isFirstRow ? (
+                        <>
+                          <td style={{ border: '1px solid #000' }} rowSpan={2}></td>
+                          <td style={{ border: '1px solid #000' }} rowSpan={2}></td>
+                          <td style={{ border: '1px solid #000' }} rowSpan={2}></td>
+                        </>
+                      ) : null}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              <tfoot>
+                <tr style={{ backgroundColor: '#ffffff', fontWeight: 'bold', height: '18px' }}>
+                  <td style={{ border: '1px solid #000', padding: '2px 4px', textAlign: 'center' }} colSpan={4}>
+                    (ตัวอักษร)
+                  </td>
+                  <td style={{ border: '1px solid #000', padding: '2px 4px', textAlign: 'center' }} colSpan={daysInMonthList.length + 1}>
+                    {arabicToThaiBaht(grandTotalAmount)}
+                  </td>
+                  <td style={{ border: '1px solid #000', textAlign: 'right', paddingRight: '3px' }}>
+                    {grandTotalAmount.toLocaleString('th-TH')}
+                  </td>
+                  <td style={{ border: '1px solid #000' }} colSpan={3}></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         )}
+
+        {doubleRateDays.length > 0 && (
+          <div style={{ marginTop: '4px', fontSize: '10px', fontWeight: 'bold', color: '#0f172a' }}>
+            * หมายเหตุ: เบิก 2 เท่า = วันที่ {doubleRateDays.join(', ')}
+          </div>
+        )}
+
+        <div className="signature-section" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px', marginTop: '16px', textAlign: 'center', fontSize: '10.5px', textIndent: 0 }}>
+          <div>
+            <p style={{ margin: '0 0 2px 0' }}>ตรวจถูกต้อง</p>
+            <p style={{ marginTop: '36px', marginBottom: '4px' }}>ลงชื่อ.........................................{controllerObj ? controllerObj.role : 'ผู้ควบคุม'}</p>
+            <p style={{ margin: '0 0 2px 0', fontWeight: 'bold' }}>({controllerObj ? controllerObj.name : '.........................................'})</p>
+            <p style={{ margin: 0, fontSize: '10px' }}>{controllerObj ? controllerObj.position : ''}</p>
+          </div>
+
+          <div>
+            <p style={{ margin: '0 0 2px 0' }}>ตรวจถูกต้อง</p>
+            <p style={{ marginTop: '36px', marginBottom: '4px' }}>ลงชื่อ.........................................{checkerObj ? checkerObj.role : ''}</p>
+            <p style={{ margin: '0 0 2px 0', fontWeight: 'bold' }}>({checkerObj ? checkerObj.name : '.........................................'})</p>
+            <p style={{ margin: 0, fontSize: '10px' }}>{checkerObj ? checkerObj.position : ''}</p>
+          </div>
+
+          <div>
+            <p style={{ margin: '0 0 2px 0' }}>อนุมัติให้จ่ายได้</p>
+            <p style={{ marginTop: '36px', marginBottom: '4px' }}>ลงชื่อ.........................................{approverObj ? approverObj.role : ''}</p>
+            <p style={{ margin: '0 0 2px 0', fontWeight: 'bold' }}>({approverObj ? approverObj.name : '.........................................'})</p>
+            <p style={{ margin: 0, fontSize: '10px' }}>{approverObj ? approverObj.position : ''}</p>
+          </div>
+
+          <div>
+            <p style={{ margin: '0 0 2px 0' }}>&nbsp;</p>
+            <p style={{ marginTop: '36px', marginBottom: '4px' }}>ลงชื่อ.........................................{payerObj ? payerObj.role : 'ผู้จ่ายเงิน'}</p>
+            <p style={{ margin: '0 0 2px 0', fontWeight: 'bold' }}>({payerObj ? payerObj.name : '.........................................'})</p>
+            <p style={{ margin: '0 0 2px 0', fontSize: '10px' }}>{payerObj ? payerObj.position : ''}</p>
+            <p style={{ margin: 0, fontSize: '9.5px', color: '#475569' }}>......../......................../........</p>
+          </div>
+        </div>
       </div>
 
-      {signerModalOpen && editingSigner && (
-        <div className="modal-backdrop no-print" onMouseDown={e => { if (e.target === e.currentTarget) setSignerModalOpen(false) }}>
-          <form className="modal" onSubmit={handleSaveSigner} style={{ maxWidth: '450px' }}>
+      {signerModalOpen && (
+        <div className="modal-backdrop no-print" onMouseDown={(e) => { if (e.target === e.currentTarget) setSignerModalOpen(false) }}>
+          <div className="modal" style={{ maxWidth: '600px' }}>
             <div className="modal-head">
               <div>
-                <h2>แก้ไขข้อมูลผู้ลงนาม</h2>
-                <p>กำหนดชื่อ ตำแหน่ง และบทบาทผู้ลงนามท้ายใบเบิก</p>
+                <h2>จัดการข้อมูลผู้ลงนามเอกสาร</h2>
+                <p>เพิ่ม แก้ไข หรือลบ รายชื่อเจ้าหน้าที่สำหรับการลงนามในใบเบิก</p>
               </div>
-              <button type="button" className="icon-button" onClick={() => setSignerModalOpen(false)}><X size={20} /></button>
+              <button type="button" className="icon-button" onClick={() => setSignerModalOpen(false)}><X size={20}/></button>
             </div>
-            <div className="form-grid" style={{ gridTemplateColumns: '1fr' }}>
-              <label>
-                ชื่อ - นามสกุล:
-                <input required value={signerForm.name} onChange={e => setSignerForm({ ...signerForm, name: e.target.value })} />
-              </label>
-              <label>
-                ตำแหน่ง:
-                <input required value={signerForm.position} onChange={e => setSignerForm({ ...signerForm, position: e.target.value })} />
-              </label>
-              <label>
-                บทบาท/หน้าที่การลงนาม:
-                <select value={signerForm.role} onChange={e => setSignerForm({ ...signerForm, role: e.target.value })}>
-                  <option value="ผู้ควบคุม">ผู้ควบคุมการปฏิบัติงาน</option>
+
+            <form onSubmit={saveSigner} style={{ marginBottom: '20px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <h4 style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '8px' }}>{editingSigner ? 'แก้ไขข้อมูลผู้ลงนาม' : 'เพิ่มผู้ลงนามใหม่'}</h4>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                <input required placeholder="ชื่อ - นามสกุล" value={signerForm.name} onChange={e => setSignerForm({ ...signerForm, name: e.target.value })} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
+                <input required placeholder="ตำแหน่ง" value={signerForm.position} onChange={e => setSignerForm({ ...signerForm, position: e.target.value })} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px' }} />
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: signerForm.role === 'custom' ? '1fr 1fr' : '1fr', gap: '8px', marginBottom: '10px' }}>
+                <select value={signerForm.role} onChange={e => setSignerForm({ ...signerForm, role: e.target.value })} style={{ padding: '6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '13px', width: '100%' }}>
+                  <option value="ผู้ควบคุม">ผู้ควบคุม</option>
                   <option value="ผู้ตรวจถูกต้อง">ผู้ตรวจถูกต้อง</option>
                   <option value="ผู้อนุมัติให้จ่ายได้">ผู้อนุมัติให้จ่ายได้</option>
                   <option value="ผู้จ่ายเงิน">ผู้จ่ายเงิน</option>
-                  <option value="custom">กำหนดเอง...</option>
+                  <option value="custom">✍️ ระบุเอง...</option>
                 </select>
-              </label>
-              {signerForm.role === 'custom' && (
-                <label>
-                  ระบุบทบาทการลงนามเอง:
-                  <input required value={signerForm.customRole} onChange={e => setSignerForm({ ...signerForm, customRole: e.target.value })} />
-                </label>
-              )}
+
+                {signerForm.role === 'custom' && (
+                  <input
+                    required
+                    placeholder="พิมพ์ระบุบทบาทเอง..."
+                    value={signerForm.customRole}
+                    onChange={e => setSignerForm({ ...signerForm, customRole: e.target.value })}
+                    style={{ padding: '6px', borderRadius: '4px', border: '1px solid #0284c7', fontSize: '13px', backgroundColor: '#f0f9ff' }}
+                  />
+                )}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '6px' }}>
+                {editingSigner && <button type="button" className="btn secondary" onClick={() => { setEditingSigner(null); setSignerForm({ name: '', position: '', role: 'ผู้ควบคุม', customRole: '' }) }}>ยกเลิก</button>}
+                <button className="btn primary" style={{ padding: '6px 14px', fontSize: '13px' }}>{editingSigner ? 'อัปเดต' : '+ เพิ่มผู้ลงนาม'}</button>
+              </div>
+            </form>
+
+            <div style={{ maxHeight: '220px', overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f1f5f9' }}>
+                    <th style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'left' }}>ชื่อ-นามสกุล</th>
+                    <th style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'left' }}>ตำแหน่ง</th>
+                    <th style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'left' }}>บทบาท</th>
+                    <th style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'center', width: '70px' }}>จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {signers.map(s => (
+                    <tr key={s.id}>
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}><b>{s.name}</b></td>
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}>{s.position}</td>
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1' }}><span style={{ backgroundColor: '#e0f2fe', color: '#0369a1', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: 500 }}>{s.role}</span></td>
+                      <td style={{ padding: '6px', border: '1px solid #cbd5e1', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                          <button type="button" onClick={() => openEditSigner(s)} title="แก้ไข" style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#0284c7' }}><Pencil size={15} /></button>
+                          <button type="button" onClick={() => deleteSigner(s.id)} title="ลบ" style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={15} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <div className="modal-actions">
-              <button type="button" className="btn secondary" onClick={() => setSignerModalOpen(false)}>ยกเลิก</button>
-              <button className="btn primary">บันทึกข้อมูลผู้ลงนาม</button>
+            <div className="modal-actions" style={{ marginTop: '16px' }}>
+              <button type="button" className="btn secondary" onClick={() => setSignerModalOpen(false)}>ปิดหน้าต่าง</button>
             </div>
-          </form>
+          </div>
         </div>
       )}
     </>
   )
 }
 
-function Dashboard({ staff, onNavigate }: { staff: Staff[]; onNavigate: (s: Section) => void }) {
-  const activeCount = staff.filter(s => s.status === 'active').length
-  const totalRate = staff.reduce((acc, curr) => acc + Number(curr.morning_rate) + Number(curr.afternoon_rate), 0)
+function CompensationPage({ staff }: { staff: Staff[] }) {
+  const [year, setYear] = useState<number>(2026)
+  const [month, setMonth] = useState<number>(11)
+  const [loading, setLoading] = useState<boolean>(false)
+  const [dutyMap, setDutyMap] = useState<Record<string, string[]>>({})
+  const [error, setError] = useState<string>('')
+
+  const activeStaff = useMemo(() => staff.filter(s => s.status === 'active'), [staff])
+
+  useEffect(() => {
+    void loadCompensationData()
+  }, [year, month])
+
+  async function loadCompensationData() {
+    if (!supabase) return
+    setLoading(true)
+    setError('')
+    try {
+      const { data: schedule, error: schErr } = await supabase
+        .from('duty_schedules')
+        .select('id')
+        .eq('schedule_year', year)
+        .eq('schedule_month', month)
+        .maybeSingle()
+
+      if (schErr) throw schErr
+
+      if (!schedule) {
+        setDutyMap({})
+        return
+      }
+
+      const { data: assignments, error: assignErr } = await supabase
+        .from('duty_assignments')
+        .select('*')
+        .eq('schedule_id', schedule.id)
+
+      if (assignErr) throw assignErr
+
+      const map: Record<string, string[]> = {}
+      ;(assignments || []).forEach((item: any) => {
+        const key = `${item.duty_date}_${item.shift_type}`
+        if (!map[key]) map[key] = []
+        map[key].push(item.staff_id)
+      })
+
+      setDutyMap(map)
+    } catch (err: any) {
+      setError('เกิดข้อผิดพลาดในการโหลดข้อมูลค่าตอบแทน: ' + err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const compensationSummary = useMemo(() => {
+    return activeStaff.map(person => {
+      let morningCount = 0
+      let afternoonCount = 0
+
+      Object.keys(dutyMap).forEach(key => {
+        const staffIds = dutyMap[key] || []
+        if (staffIds.includes(person.id)) {
+          if (key.endsWith('_morning')) morningCount++
+          if (key.endsWith('_afternoon')) afternoonCount++
+        }
+      })
+
+      const morningAmount = morningCount * Number(person.morning_rate || 0)
+      const afternoonAmount = afternoonCount * Number(person.afternoon_rate || 0)
+      const totalAmount = morningAmount + afternoonAmount
+
+      return {
+        ...person,
+        morningCount,
+        afternoonCount,
+        morningAmount,
+        afternoonAmount,
+        totalAmount
+      }
+    })
+  }, [activeStaff, dutyMap])
+
+  const grandTotals = useMemo(() => {
+    return compensationSummary.reduce((acc, curr) => ({
+      morningCount: acc.morningCount + curr.morningCount,
+      morningAmount: acc.morningAmount + curr.morningAmount,
+      afternoonCount: acc.afternoonCount + curr.afternoonCount,
+      afternoonAmount: acc.afternoonAmount + curr.afternoonAmount,
+      totalAmount: acc.totalAmount + curr.totalAmount,
+    }), { morningCount: 0, morningAmount: 0, afternoonCount: 0, afternoonAmount: 0, totalAmount: 0 })
+  }, [compensationSummary])
+
+  const thaiMonthName = new Date(year, month - 1).toLocaleString('th-TH', { month: 'long' })
+  const thaiYear = year + 543
 
   return (
     <>
       <div className="page-heading no-print">
         <div>
-          <div className="eyebrow font-semibold">OVERVIEW</div>
-          <h1 className="text-2xl font-bold">ภาพรวมระบบ</h1>
-          <p className="text-gray-600">ยินดีต้อนรับสู่ระบบบริหารจัดการตารางเวรและค่าตอบแทน</p>
+          <div className="eyebrow font-semibold">COMPENSATION REPORT</div>
+          <h1 className="text-2xl font-bold">รายงานคำนวณค่าตอบแทนเวรปฏิบัติงาน</h1>
+          <p className="text-gray-600">คำนวณเงินค่าตอบแทนปฏิบัติงานนอกเวลาราชการประจำเดือน</p>
         </div>
-      </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <select 
+            value={month} 
+            onChange={e => setMonth(Number(e.target.value))}
+            style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', fontSize: '14px' }}
+          >
+            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+              <option key={m} value={m}>
+                {new Date(2026, m - 1).toLocaleString('th-TH', { month: 'long' })}
+              </option>
+            ))}
+          </select>
 
-      <div className="stats-grid no-print">
-        <div className="stat-card">
-          <div className="stat-icon text-blue-600"><Users size={24} /></div>
-          <div>
-            <div className="stat-label">บุคลากรทั้งหมด</div>
-            <div className="stat-value">{staff.length}</div>
-            <div className="stat-sub">รายชื่อในระบบ</div>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon text-emerald-600"><UserCheck size={24} /></div>
-          <div>
-            <div className="stat-label">กำลังปฏิบัติงาน</div>
-            <div className="stat-value">{activeCount}</div>
-            <div className="stat-sub">สถานะ active</div>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-icon text-amber-600"><CircleDollarSign size={24} /></div>
-          <div>
-            <div className="stat-label">อัตราค่าตอบแทนตั้งไว้</div>
-            <div className="stat-value">{totalRate.toLocaleString()}</div>
-            <div className="stat-sub">บาท/รอบเวร</div>
-          </div>
-        </div>
-      </div>
+          <select 
+            value={year} 
+            onChange={e => setYear(Number(e.target.value))}
+            style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', fontSize: '14px' }}
+          >
+            <option value={2026}>พ.ศ. 2569</option>
+            <option value={2025}>พ.ศ. 2568</option>
+          </select>
 
-      <div className="panel mt-6 no-print" style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-        <h2 className="text-lg font-bold mb-4">เมนูด่วนและการจัดการ</h2>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-          <button className="btn primary" onClick={() => onNavigate('roster')}>
-            <CalendarDays size={18} /> จัดตารางเวรประจำเดือน
-          </button>
-          <button className="btn secondary" onClick={() => onNavigate('work-summary')}>
-            <ClipboardList size={18} /> สรุปผลการปฏิบัติงาน
-          </button>
-          <button className="btn secondary" onClick={() => onNavigate('documents')}>
-            <FileText size={18} /> พิมพ์ใบเบิกค่าตอบแทน
-          </button>
-          <button className="btn secondary" onClick={() => onNavigate('staff')}>
-            <Users size={18} /> จัดการรายชื่อบุคลากร
+          <button
+            onClick={() => window.print()}
+            className="btn secondary"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Printer size={16} /> พิมพ์ใบสรุปค่าตอบแทน
           </button>
         </div>
       </div>
-    </>
-  )
-}
 
-function StaffPage({
-  staff, search, setSearch, loading, onAdd, onEdit, onToggle, onReorder, isAdmin
-}: {
-  staff: Staff[]; search: string; setSearch: (s: string) => void;
-  loading: boolean; onAdd: () => void; onEdit: (s: Staff) => void; onToggle: (s: Staff) => void;
-  onReorder: () => void; isAdmin: boolean
-}) {
-  return (
-    <>
-      <div className="page-heading no-print">
-        <div>
-          <div className="eyebrow font-semibold">STAFF MANAGEMENT</div>
-          <h1 className="text-2xl font-bold">จัดการบุคลากร</h1>
-          <p className="text-gray-600">จัดการรายชื่อ อัตราค่าตอบแทน และการจัดลำดับบุคลากร</p>
-        </div>
-        {isAdmin && (
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn secondary" onClick={onReorder}>
-              <ListOrdered size={18} /> จัดลำดับ (1, 2, 3...)
-            </button>
-            <button className="btn primary" onClick={onAdd}>
-              <Plus size={18} /> เพิ่มบุคลากร
-            </button>
-          </div>
-        )}
+      {error && <div className="alert error no-print mb-4">{error}</div>}
+
+      <div className="stat-grid no-print mb-6">
+        <Stat icon={CircleDollarSign} label="เวรเช้ารวม" value={`${grandTotals.morningAmount.toLocaleString('th-TH')} บาท`} note={`รวม ${grandTotals.morningCount} ครั้ง`} tone="amber" />
+        <Stat icon={CircleDollarSign} label="เวรบ่ายรวม" value={`${grandTotals.afternoonAmount.toLocaleString('th-TH')} บาท`} note={`รวม ${grandTotals.afternoonCount} ครั้ง`} tone="purple" />
+        <Stat icon={CircleDollarSign} label="ยอดเบิกจ่ายรวมทั้งสิ้น" value={`${grandTotals.totalAmount.toLocaleString('th-TH')} บาท`} note="คำนวณสุทธิ" tone="teal" />
+        <Stat icon={Users} label="จำนวนผู้ได้รับค่าตอบแทน" value={`${compensationSummary.filter(c => c.totalAmount > 0).length} ราย`} note={`จากทั้งหมด ${activeStaff.length} ราย`} tone="blue" />
       </div>
 
-      <div className="panel no-print" style={{ backgroundColor: '#ffffff', padding: '20px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-          <div style={{ position: 'relative', flex: 1 }}>
-            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="ค้นหาชื่อ, ตำแหน่ง, รหัส..."
-              style={{ width: '100%', paddingLeft: '38px', paddingRight: '12px', paddingTop: '8px', paddingBottom: '8px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13.5px' }}
-            />
-          </div>
+      <div className="panel table-panel print-area" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '20px', border: '1px solid #e2e8f0' }}>
+        <div style={{ textAlign: 'center', marginBottom: '16px', color: '#0f172a' }}>
+          <h2 style={{ fontSize: '17px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+            รายละเอียดหลักฐานการจ่ายเงินค่าตอบแทนการปฏิบัติงานนอกเวลาราชการ
+          </h2>
+          <p style={{ fontSize: '13.5px', color: '#475569', margin: 0 }}>
+            โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค ประจำเดือน {thaiMonthName} พ.ศ. {thaiYear}
+          </p>
         </div>
 
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <Loader2 className="animate-spin" style={{ margin: '0 auto 8px auto' }} />
-            <p>กำลังโหลดรายชื่อบุคลากร...</p>
-          </div>
+          <div style={{ padding: '48px', textAlign: 'center', color: '#64748b' }}>กำลังคำนวณค่าตอบแทน...</div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #cbd5e1' }}>
-                <th style={{ padding: '10px', textAlign: 'left' }}>รหัส</th>
-                <th style={{ padding: '10px', textAlign: 'left' }}>ชื่อ - สกุล</th>
-                <th style={{ padding: '10px', textAlign: 'left' }}>ตำแหน่ง</th>
-                <th style={{ padding: '10px', textAlign: 'center' }}>ประเภท</th>
-                <th style={{ padding: '10px', textAlign: 'right' }}>เวรเช้า (บาท)</th>
-                <th style={{ padding: '10px', textAlign: 'right' }}>เวรบ่าย (บาท)</th>
-                <th style={{ padding: '10px', textAlign: 'center' }}>สถานะ</th>
-                {isAdmin && <th style={{ padding: '10px', textAlign: 'center' }}>จัดการ</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {staff.map(person => (
-                <tr key={person.id} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                  <td style={{ padding: '10px', fontWeight: 'bold', color: '#0284c7' }}>{person.staff_code}</td>
-                  <td style={{ padding: '10px', fontWeight: 500 }}>{person.first_name} {person.last_name}</td>
-                  <td style={{ padding: '10px', color: '#475569' }}>{person.position}</td>
-                  <td style={{ padding: '10px', textAlign: 'center' }}>
-                    <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '11.5px', backgroundColor: person.staff_type === 'วิชาชีพ' ? '#e0f2fe' : '#f1f5f9', color: person.staff_type === 'วิชาชีพ' ? '#0369a1' : '#475569' }}>
-                      {person.staff_type}
-                    </span>
-                  </td>
-                  <td style={{ padding: '10px', textAlign: 'right' }}>{Number(person.morning_rate).toLocaleString()}</td>
-                  <td style={{ padding: '10px', textAlign: 'right' }}>{Number(person.afternoon_rate).toLocaleString()}</td>
-                  <td style={{ padding: '10px', textAlign: 'center' }}>
-                    <button
-                      disabled={!isAdmin}
-                      onClick={() => onToggle(person)}
-                      style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '11.5px', border: 'none', cursor: isAdmin ? 'pointer' : 'default', backgroundColor: person.status === 'active' ? '#dcfce7' : '#fee2e2', color: person.status === 'active' ? '#15803d' : '#b91c1c' }}
-                    >
-                      {person.status === 'active' ? 'ใช้งาน' : 'ไม่ใช้งาน'}
-                    </button>
-                  </td>
-                  {isAdmin && (
-                    <td style={{ padding: '10px', textAlign: 'center' }}>
-                      <button onClick={() => onEdit(person)} className="icon-button" style={{ color: '#0284c7' }}>
-                        <Pencil size={16} />
-                      </button>
-                    </td>
-                  )}
+          <div style={{ width: '100%', overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', border: '1px solid #000000' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f1f5f9' }}>
+                  <th style={{ border: '1px solid #000', padding: '6px', width: '40px', textAlign: 'center' }} rowSpan={2}>ลำดับ</th>
+                  <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'center' }} rowSpan={2}>ชื่อ - นามสกุล</th>
+                  <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'center' }} rowSpan={2}>ตำแหน่ง</th>
+                  <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'center' }} colSpan={3}>☀️ เวรเช้า (๐๘.๓๐-๑๖.๓๐ น.)</th>
+                  <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'center' }} colSpan={3}>🌤️ เวรบ่าย (๑๖.๓๐-๑๘.๓๐ น.)</th>
+                  <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'center', width: '100px' }} rowSpan={2}>รวมเป็นเงิน (บาท)</th>
+                  <th style={{ border: '1px solid #000', padding: '6px', textAlign: 'center', width: '100px' }} rowSpan={2}>ลายมือชื่อผู้รับเงิน</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+                <tr style={{ backgroundColor: '#f8fafc' }}>
+                  <th style={{ border: '1px solid #000', padding: '4px', width: '50px', textAlign: 'center' }}>จำนวน</th>
+                  <th style={{ border: '1px solid #000', padding: '4px', width: '70px', textAlign: 'center' }}>อัตรา</th>
+                  <th style={{ border: '1px solid #000', padding: '4px', width: '80px', textAlign: 'center' }}>รวมเงิน</th>
+                  <th style={{ border: '1px solid #000', padding: '4px', width: '50px', textAlign: 'center' }}>จำนวน</th>
+                  <th style={{ border: '1px solid #000', padding: '4px', width: '70px', textAlign: 'center' }}>อัตรา</th>
+                  <th style={{ border: '1px solid #000', padding: '4px', width: '80px', textAlign: 'center' }}>รวมเงิน</th>
+                </tr>
+              </thead>
+              <tbody>
+                {compensationSummary.length === 0 ? (
+                  <tr>
+                    <td colSpan={11} style={{ border: '1px solid #000', padding: '24px', textAlign: 'center', color: '#64748b' }}>
+                      ไม่พบข้อมูลการจัดตารางเวรในเดือนนี้
+                    </td>
+                  </tr>
+                ) : (
+                  compensationSummary.map((item, idx) => (
+                    <tr key={item.id} style={{ height: '36px' }}>
+                      <td style={{ border: '1px solid #000', textAlign: 'center' }}>{idx + 1}</td>
+                      <td style={{ border: '1px solid #000', padding: '4px 8px', whiteSpace: 'nowrap' }}>
+                        <b>{item.first_name} {item.last_name}</b>
+                      </td>
+                      <td style={{ border: '1px solid #000', padding: '4px 8px', fontSize: '12px' }}>{item.position}</td>
+                      
+                      <td style={{ border: '1px solid #000', textAlign: 'center' }}>{item.morningCount > 0 ? item.morningCount : '-'}</td>
+                      <td style={{ border: '1px solid #000', textAlign: 'right', paddingRight: '6px' }}>{Number(item.morning_rate).toLocaleString('th-TH')}</td>
+                      <td style={{ border: '1px solid #000', textAlign: 'right', paddingRight: '6px' }}>{item.morningAmount > 0 ? item.morningAmount.toLocaleString('th-TH') : '-'}</td>
+                      
+                      <td style={{ border: '1px solid #000', textAlign: 'center' }}>{item.afternoonCount > 0 ? item.afternoonCount : '-'}</td>
+                      <td style={{ border: '1px solid #000', textAlign: 'right', paddingRight: '6px' }}>{Number(item.afternoon_rate).toLocaleString('th-TH')}</td>
+                      <td style={{ border: '1px solid #000', textAlign: 'right', paddingRight: '6px' }}>{item.afternoonAmount > 0 ? item.afternoonAmount.toLocaleString('th-TH') : '-'}</td>
+                      
+                      <td style={{ border: '1px solid #000', textAlign: 'right', paddingRight: '8px', fontWeight: 'bold', backgroundColor: '#fefce8' }}>
+                        {item.totalAmount > 0 ? item.totalAmount.toLocaleString('th-TH') : '-'}
+                      </td>
+                      <td style={{ border: '1px solid #000', textAlign: 'center' }}></td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              <tfoot>
+                <tr style={{ backgroundColor: '#f1f5f9', fontWeight: 'bold' }}>
+                  <td colSpan={3} style={{ border: '1px solid #000', padding: '8px', textAlign: 'center' }}>รวมทั้งสิ้น</td>
+                  <td style={{ border: '1px solid #000', textAlign: 'center' }}>{grandTotals.morningCount}</td>
+                  <td style={{ border: '1px solid #000' }}></td>
+                  <td style={{ border: '1px solid #000', textAlign: 'right', paddingRight: '6px' }}>{grandTotals.morningAmount.toLocaleString('th-TH')}</td>
+                  <td style={{ border: '1px solid #000', textAlign: 'center' }}>{grandTotals.afternoonCount}</td>
+                  <td style={{ border: '1px solid #000' }}></td>
+                  <td style={{ border: '1px solid #000', textAlign: 'right', paddingRight: '6px' }}>{grandTotals.afternoonAmount.toLocaleString('th-TH')}</td>
+                  <td style={{ border: '1px solid #000', textAlign: 'right', paddingRight: '8px', color: '#0f172a', backgroundColor: '#fef08a' }}>
+                    {grandTotals.totalAmount.toLocaleString('th-TH')}
+                  </td>
+                  <td style={{ border: '1px solid #000' }}></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         )}
       </div>
     </>
   )
 }
 
-function RosterCalendarPage() {
+function RosterCalendarPage({ staff, isAdmin }: { staff: Staff[]; isAdmin: boolean }) {
+  const [year, setYear] = useState<number>(2026)
+  const [month, setMonth] = useState<number>(11)
+  const [scheduleId, setScheduleId] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'calendar' | 'matrix'>('calendar')
+  
+  const [dutyMap, setDutyMap] = useState<Record<string, string[]>>({})
+  const [loading, setLoading] = useState<boolean>(false)
+  const [saving, setSaving] = useState<boolean>(false)
+  const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
+
+  const activeStaff = useMemo(() => staff.filter(s => s.status === 'active'), [staff])
+
+  const daysInMonthList = useMemo(() => {
+    const totalDays = new Date(year, month, 0).getDate()
+    const list = []
+    for (let day = 1; day <= totalDays; day++) {
+      const dateObj = new Date(year, month - 1, day)
+      const dayOfWeekIndex = dateObj.getDay()
+      const dayStr = String(day).padStart(2, '0')
+      const monthStr = String(month).padStart(2, '0')
+      const dateStr = `${year}-${monthStr}-${dayStr}`
+      list.push({
+        day,
+        dateStr,
+        dayOfWeekIndex,
+        dayOfWeekName: WEEKDAYS_SHORT[dayOfWeekIndex],
+        isSunday: dayOfWeekIndex === 0,
+        isSaturday: dayOfWeekIndex === 6,
+      })
+    }
+    return list
+  }, [year, month])
+
+  const calendarWeeks = useMemo(() => {
+    const firstDayIndex = new Date(year, month - 1, 1).getDay()
+    const daysInMonth = new Date(year, month, 0).getDate()
+    
+    const cells: Array<{
+      day: number
+      dateStr: string
+      dayOfWeekIndex: number
+      isSunday: boolean
+      isSaturday: boolean
+    } | null> = []
+
+    for (let i = 0; i < firstDayIndex; i++) {
+      cells.push(null)
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateObj = new Date(year, month - 1, day)
+      const dayOfWeekIndex = dateObj.getDay()
+      const dayStr = String(day).padStart(2, '0')
+      const monthStr = String(month).padStart(2, '0')
+      const dateStr = `${year}-${monthStr}-${dayStr}`
+      
+      cells.push({
+        day,
+        dateStr,
+        dayOfWeekIndex,
+        isSunday: dayOfWeekIndex === 0,
+        isSaturday: dayOfWeekIndex === 6,
+      })
+    }
+
+    while (cells.length % 7 !== 0) {
+      cells.push(null)
+    }
+
+    const weeks = []
+    for (let i = 0; i < cells.length; i += 7) {
+      weeks.push(cells.slice(i, i + 7))
+    }
+
+    return weeks
+  }, [year, month])
+
+  useEffect(() => {
+    void loadRoster()
+  }, [year, month])
+
+  async function loadRoster() {
+    if (!supabase) return
+    setLoading(true)
+    setMsg(null)
+    try {
+      let { data: schedule, error: schErr } = await supabase
+        .from('duty_schedules')
+        .select('*')
+        .eq('schedule_year', year)
+        .eq('schedule_month', month)
+        .maybeSingle()
+
+      if (schErr) throw schErr
+
+      if (!schedule) {
+        const { data: newSchList, error: createErr } = await supabase
+          .from('duty_schedules')
+          .upsert(
+            [{ schedule_year: year, schedule_month: month, status: 'draft' }],
+            { onConflict: 'schedule_year,schedule_month' }
+          )
+          .select()
+
+        if (createErr) throw createErr
+
+        if (newSchList && newSchList.length > 0) {
+          schedule = newSchList[0]
+        } else {
+          const { data: retrySch } = await supabase
+            .from('duty_schedules')
+            .select('*')
+            .eq('schedule_year', year)
+            .eq('schedule_month', month)
+            .maybeSingle()
+          schedule = retrySch
+        }
+      }
+
+      if (!schedule) throw new Error('ไม่สามารถสร้างหรือดึงหัวข้อตารางเวรได้')
+
+      setScheduleId(schedule.id)
+
+      const { data: assignments, error: assignErr } = await supabase
+        .from('duty_assignments')
+        .select('*')
+        .eq('schedule_id', schedule.id)
+
+      if (assignErr) throw assignErr
+
+      const map: Record<string, string[]> = {}
+      ;(assignments || []).forEach((item: any) => {
+        const key = `${item.duty_date}_${item.shift_type}`
+        if (!map[key]) map[key] = []
+        map[key].push(item.staff_id)
+      })
+
+      setDutyMap(map)
+    } catch (err: any) {
+      setMsg({ text: 'เกิดข้อผิดพลาดในการโหลดตารางเวร: ' + err.message, type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function handleStaffChange(dateStr: string, shift: 'morning' | 'afternoon', index: number, staffId: string) {
+    if (!isAdmin) return
+    const key = `${dateStr}_${shift}`
+    setDutyMap(prev => {
+      const currentList = [...(prev[key] || [''])]
+      currentList[index] = staffId
+      return { ...prev, [key]: currentList }
+    })
+  }
+
+  function addStaffSlot(dateStr: string, shift: 'morning' | 'afternoon') {
+    if (!isAdmin) return
+    const key = `${dateStr}_${shift}`
+    setDutyMap(prev => {
+      const currentList = [...(prev[key] || [''])]
+      currentList.push('')
+      return { ...prev, [key]: currentList }
+    })
+  }
+
+  function removeStaffSlot(dateStr: string, shift: 'morning' | 'afternoon', index: number) {
+    if (!isAdmin) return
+    const key = `${dateStr}_${shift}`
+    setDutyMap(prev => {
+      const currentList = [...(prev[key] || [])]
+      currentList.splice(index, 1)
+      return { ...prev, [key]: currentList }
+    })
+  }
+
+  async function handleSave() {
+    if (!supabase || !scheduleId || !isAdmin) return
+    setSaving(true)
+    setMsg(null)
+    try {
+      const { error: delErr } = await supabase
+        .from('duty_assignments')
+        .delete()
+        .eq('schedule_id', scheduleId)
+
+      if (delErr) throw delErr
+
+      const rowsToInsert: any[] = []
+      Object.keys(dutyMap).forEach(key => {
+        const staffIds = dutyMap[key] || []
+        const [duty_date, shift_type] = key.split('_')
+        
+        staffIds.forEach(staff_id => {
+          if (staff_id && staff_id.trim() !== '') {
+            rowsToInsert.push({
+              schedule_id: scheduleId,
+              staff_id,
+              duty_date,
+              shift_type
+            })
+          }
+        })
+      })
+
+      if (rowsToInsert.length > 0) {
+        const { error: insErr } = await supabase.from('duty_assignments').insert(rowsToInsert)
+        if (insErr) throw insErr
+      }
+
+      setMsg({ text: 'บันทึกตารางเวรเรียบร้อยแล้ว', type: 'success' })
+    } catch (err: any) {
+      setMsg({ text: 'เกิดข้อผิดพลาดในการบันทึก: ' + err.message, type: 'error' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const thaiMonthName = new Date(year, month - 1).toLocaleString('th-TH', { month: 'long' })
+  const thaiYear = year + 543
+
   return (
-    <div className="panel no-print" style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-      <h2 className="text-xl font-bold mb-2">จัดตารางเวรประจำเดือน</h2>
-      <p className="text-gray-600">ระบบจัดตารางเวรปฏิบัติงานนอกเวลาราชการ</p>
-    </div>
+    <>
+      <div className="page-heading no-print">
+        <div>
+          <div className="eyebrow font-semibold">ROSTER MANAGEMENT</div>
+          <h1 className="text-2xl font-bold">ตารางปฏิบัติงานเจ้าหน้าที่ประจำเดือน</h1>
+          <p className="text-gray-600">โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค อำเภอเมืองสุรินทร์ จังหวัดสุรินทร์</p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', backgroundColor: '#e2e8f0', padding: '3px', borderRadius: '8px' }}>
+            <button
+              onClick={() => setViewMode('calendar')}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: viewMode === 'calendar' ? '#ffffff' : 'transparent',
+                color: viewMode === 'calendar' ? '#0f172a' : '#64748b',
+                fontWeight: viewMode === 'calendar' ? 'bold' : 'normal',
+                fontSize: '13px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <CalendarDays size={16} /> รูปแบบปฏิทิน
+            </button>
+            <button
+              onClick={() => setViewMode('matrix')}
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: viewMode === 'matrix' ? '#ffffff' : 'transparent',
+                color: viewMode === 'matrix' ? '#0f172a' : '#64748b',
+                fontWeight: viewMode === 'matrix' ? 'bold' : 'normal',
+                fontSize: '13px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <Table size={16} /> ตารางแนวยาว (ราชการ)
+            </button>
+          </div>
+
+          <select 
+            value={month} 
+            onChange={e => setMonth(Number(e.target.value))}
+            style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', fontSize: '14px' }}
+          >
+            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+              <option key={m} value={m}>
+                {new Date(2026, m - 1).toLocaleString('th-TH', { month: 'long' })}
+              </option>
+            ))}
+          </select>
+
+          <select 
+            value={year} 
+            onChange={e => setYear(Number(e.target.value))}
+            style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', fontSize: '14px' }}
+          >
+            <option value={2026}>พ.ศ. 2569</option>
+            <option value={2025}>พ.ศ. 2568</option>
+          </select>
+
+          {isAdmin && (
+            <button 
+              onClick={handleSave} 
+              disabled={saving || loading}
+              className="btn primary"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+              {saving ? 'กำลังบันทึก...' : 'บันทึกตารางเวร'}
+            </button>
+          )}
+
+          {viewMode === 'matrix' && (
+            <button
+              onClick={() => window.print()}
+              className="btn secondary"
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Printer size={16} /> พิมพ์ตาราง
+            </button>
+          )}
+        </div>
+      </div>
+
+      {msg && (
+        <div className={`alert ${msg.type === 'error' ? 'error' : 'success'} mb-4 no-print`}>
+          <AlertCircle size={17} />
+          {msg.text}
+          <button onClick={() => setMsg(null)}><X size={15} /></button>
+        </div>
+      )}
+
+      {viewMode === 'calendar' ? (
+        <div className="panel table-panel" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '16px', border: '1px solid #e2e8f0' }}>
+          {loading ? (
+            <div style={{ padding: '48px', textAlign: 'center', color: '#64748b' }}>กำลังโหลดข้อมูลปฏิทินเวร...</div>
+          ) : (
+            <div style={{ width: '100%', overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: '980px' }}>
+                <thead>
+                  <tr>
+                    {['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'].map((dayName, idx) => (
+                      <th 
+                        key={dayName} 
+                        style={{
+                          padding: '10px 4px',
+                          textAlign: 'center',
+                          fontWeight: 'bold',
+                          fontSize: '14px',
+                          color: '#ffffff',
+                          backgroundColor: idx === 0 ? '#dc2626' : idx === 6 ? '#0284c7' : '#0f172a',
+                          border: '1px solid #334155',
+                          width: '14.28%'
+                        }}
+                      >
+                        {dayName}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {calendarWeeks.map((week, wIdx) => (
+                    <tr key={`week-${wIdx}`}>
+                      {week.map((cell, cIdx) => {
+                        if (!cell) {
+                          return (
+                            <td 
+                              key={`empty-${wIdx}-${cIdx}`} 
+                              style={{
+                                backgroundColor: '#f8fafc',
+                                border: '1px solid #e2e8f0',
+                                height: '140px',
+                                verticalAlign: 'top'
+                              }}
+                            />
+                          )
+                        }
+
+                        const morningStaffList = dutyMap[`${cell.dateStr}_morning`] || ['']
+                        const afternoonStaffList = dutyMap[`${cell.dateStr}_afternoon`] || ['']
+
+                        return (
+                          <td 
+                            key={cell.dateStr} 
+                            style={{
+                              border: '1px solid #cbd5e1',
+                              padding: '6px',
+                              verticalAlign: 'top',
+                              backgroundColor: cell.isSunday ? '#fff5f5' : cell.isSaturday ? '#f0f9ff' : '#ffffff',
+                              minHeight: '140px'
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                              <span 
+                                style={{
+                                  fontWeight: 'bold',
+                                  fontSize: '14px',
+                                  color: cell.isSunday ? '#dc2626' : cell.isSaturday ? '#0284c7' : '#1e293b'
+                                }}
+                              >
+                                {cell.day}
+                              </span>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '6px', padding: '4px 6px' }}>
+                                <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#92400e', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span>☀️ เวรเช้า</span>
+                                  {isAdmin && (
+                                    <button
+                                      onClick={() => addStaffSlot(cell.dateStr, 'morning')}
+                                      title="เพิ่มเจ้าหน้าที่เวรเช้า"
+                                      style={{
+                                        backgroundColor: '#16a34a',
+                                        color: '#ffffff',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        padding: '1px 5px',
+                                        fontSize: '11px',
+                                        cursor: 'pointer',
+                                        fontWeight: 'bold'
+                                      }}
+                                    >
+                                      + เพิ่มคน
+                                    </button>
+                                  )}
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {morningStaffList.map((staffId, sIdx) => (
+                                    <div key={`m-${sIdx}`} style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                      <select
+                                        value={staffId}
+                                        disabled={!isAdmin}
+                                        onChange={e => handleStaffChange(cell.dateStr, 'morning', sIdx, e.target.value)}
+                                        style={{
+                                          flex: 1,
+                                          fontSize: '11px',
+                                          padding: '3px 2px',
+                                          borderRadius: '4px',
+                                          border: '1px solid #cbd5e1',
+                                          backgroundColor: '#ffffff'
+                                        }}
+                                      >
+                                        <option value="">-- ไม่มีเจ้าหน้าที่ --</option>
+                                        {activeStaff.map(s => (
+                                          <option key={s.id} value={s.id}>
+                                            {s.first_name} {s.last_name}
+                                          </option>
+                                        ))}
+                                      </select>
+
+                                      {isAdmin && morningStaffList.length > 1 && (
+                                        <button
+                                          onClick={() => removeStaffSlot(cell.dateStr, 'morning', sIdx)}
+                                          title="ลบออก"
+                                          style={{
+                                            backgroundColor: '#ef4444',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '3px',
+                                            padding: '2px 4px',
+                                            fontSize: '10px',
+                                            cursor: 'pointer'
+                                          }}
+                                        >
+                                          ✕
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div style={{ backgroundColor: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '6px', padding: '4px 6px' }}>
+                                <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#075985', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span>🌤️ เวรบ่าย</span>
+                                  {isAdmin && (
+                                    <button
+                                      onClick={() => addStaffSlot(cell.dateStr, 'afternoon')}
+                                      title="เพิ่มเจ้าหน้าที่เวรบ่าย"
+                                      style={{
+                                        backgroundColor: '#0284c7',
+                                        color: '#ffffff',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        padding: '1px 5px',
+                                        fontSize: '11px',
+                                        cursor: 'pointer',
+                                        fontWeight: 'bold'
+                                      }}
+                                    >
+                                      + เพิ่มคน
+                                    </button>
+                                  )}
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  {afternoonStaffList.map((staffId, sIdx) => (
+                                    <div key={`a-${sIdx}`} style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                      <select
+                                        value={staffId}
+                                        disabled={!isAdmin}
+                                        onChange={e => handleStaffChange(cell.dateStr, 'afternoon', sIdx, e.target.value)}
+                                        style={{
+                                          flex: 1,
+                                          fontSize: '11px',
+                                          padding: '3px 2px',
+                                          borderRadius: '4px',
+                                          border: '1px solid #cbd5e1',
+                                          backgroundColor: '#ffffff'
+                                        }}
+                                      >
+                                        <option value="">-- ไม่มีเจ้าหน้าที่ --</option>
+                                        {activeStaff.map(s => (
+                                          <option key={s.id} value={s.id}>
+                                            {s.first_name} {s.last_name}
+                                          </option>
+                                        ))}
+                                      </select>
+
+                                      {isAdmin && afternoonStaffList.length > 1 && (
+                                        <button
+                                          onClick={() => removeStaffSlot(cell.dateStr, 'afternoon', sIdx)}
+                                          title="ลบออก"
+                                          style={{
+                                            backgroundColor: '#ef4444',
+                                            color: '#fff',
+                                            border: 'none',
+                                            borderRadius: '3px',
+                                            padding: '2px 4px',
+                                            fontSize: '10px',
+                                            cursor: 'pointer'
+                                          }}
+                                        >
+                                          ✕
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="panel table-panel print-area" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '20px', border: '1px solid #e2e8f0' }}>
+          <div style={{ textAlign: 'center', marginBottom: '16px', color: '#0f172a' }}>
+            <h2 style={{ fontSize: '17px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
+              ตารางปฏิบัติงานของเจ้าหน้าที่โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค อำเภอเมืองสุรินทร์ เดือน {thaiMonthName} พ.ศ. {thaiYear}
+            </h2>
+            <p style={{ fontSize: '13.5px', color: '#475569', margin: 0 }}>
+              เรื่อง ให้เจ้าหน้าที่ปฏิบัติงานส่งเสริมสุขภาพเชิงรุก ปฏิบัติงานนอกเวลาราชการและวันหยุดราชการ
+            </p>
+          </div>
+
+          <div style={{ width: '100%', overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', border: '1px solid #000000' }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f1f5f9' }}>
+                  <th style={{ border: '1px solid #000', padding: '4px', width: '35px', textAlign: 'center' }} rowSpan={2}>ลำดับ</th>
+                  <th style={{ border: '1px solid #000', padding: '4px', minWidth: '130px', textAlign: 'center' }} rowSpan={2}>ชื่อ</th>
+                  <th style={{ border: '1px solid #000', padding: '4px', minWidth: '120px', textAlign: 'center' }} rowSpan={2}>ตำแหน่ง</th>
+                  {daysInMonthList.map(d => (
+                    <th 
+                      key={`h-day-${d.day}`}
+                      style={{ 
+                        border: '1px solid #000', 
+                        padding: '3px 2px', 
+                        textAlign: 'center', 
+                        width: '24px',
+                        backgroundColor: d.isSunday ? '#fca5a5' : d.isSaturday ? '#bae6fd' : '#f1f5f9'
+                      }}
+                    >
+                      {d.day}
+                    </th>
+                  ))}
+                  <th style={{ border: '1px solid #000', padding: '4px', minWidth: '90px', textAlign: 'center' }} rowSpan={2}>ลายมือชื่อ</th>
+                </tr>
+                <tr style={{ backgroundColor: '#f8fafc' }}>
+                  {daysInMonthList.map(d => (
+                    <th 
+                      key={`h-wday-${d.day}`}
+                      style={{ 
+                        border: '1px solid #000', 
+                        padding: '2px 1px', 
+                        textAlign: 'center', 
+                        fontSize: '11px',
+                        color: d.isSunday ? '#dc2626' : d.isSaturday ? '#0284c7' : '#000000',
+                        backgroundColor: d.isSunday ? '#fee2e2' : d.isSaturday ? '#e0f2fe' : '#ffffff'
+                      }}
+                    >
+                      {d.dayOfWeekName}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {activeStaff.length === 0 ? (
+                  <tr>
+                    <td colSpan={daysInMonthList.length + 4} style={{ border: '1px solid #000', padding: '20px', textAlign: 'center', color: '#64748b' }}>
+                      ไม่พบรายชื่อเจ้าหน้าที่ที่ใช้งานอยู่ในระบบ
+                    </td>
+                  </tr>
+                ) : (
+                  activeStaff.map((person, idx) => (
+                    <tr key={person.id} style={{ height: '32px' }}>
+                      <td style={{ border: '1px solid #000', textAlign: 'center' }}>{idx + 1}</td>
+                      <td style={{ border: '1px solid #000', padding: '2px 6px', whiteSpace: 'nowrap' }}>
+                        <b>{person.first_name} {person.last_name}</b>
+                      </td>
+                      <td style={{ border: '1px solid #000', padding: '2px 6px', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                        {person.position}
+                      </td>
+
+                      {daysInMonthList.map(d => {
+                        const morningList = dutyMap[`${d.dateStr}_morning`] || []
+                        const afternoonList = dutyMap[`${d.dateStr}_afternoon`] || []
+                        
+                        const isMorning = morningList.includes(person.id)
+                        const isAfternoon = afternoonList.includes(person.id)
+
+                        let symbol = ''
+                        let cellBg = 'transparent'
+                        let textColor = '#000000'
+
+                        if (isMorning && isAfternoon) {
+                          symbol = 'ช/บ'
+                          cellBg = '#fef08a'
+                        } else if (isMorning) {
+                          symbol = 'ช'
+                          textColor = '#b91c1c'
+                        } else if (isAfternoon) {
+                          symbol = 'บ'
+                          cellBg = '#fef08a'
+                          textColor = '#854d0e'
+                        }
+
+                        return (
+                          <td 
+                            key={`cell-${person.id}-${d.day}`}
+                            style={{ 
+                              border: '1px solid #000', 
+                              textAlign: 'center', 
+                              fontWeight: 'bold',
+                              fontSize: '12px',
+                              backgroundColor: cellBg,
+                              color: textColor
+                            }}
+                          >
+                            {symbol}
+                          </td>
+                        )
+                      })}
+
+                      <td style={{ border: '1px solid #000', textAlign: 'center' }}></td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ marginTop: '16px', fontSize: '13px', display: 'flex', gap: '32px', flexWrap: 'wrap', color: '#1e293b' }}>
+            <div><b>หมายเหตุ:</b></div>
+            <div><span style={{ fontWeight: 'bold', color: '#b91c1c' }}>ช</span> = เวรเช้า ปฏิบัติงานตั้งแต่เวลา ๐๘.๓๐-๑๖.๓๐ น.</div>
+            <div><span style={{ fontWeight: 'bold', color: '#854d0e', backgroundColor: '#fef08a', padding: '1px 4px', borderRadius: '3px' }}>บ</span> = เวรบ่าย ปฏิบัติงานตั้งแต่เวลา ๑๖.๓๐-๑๘.๓๐ น.</div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
-function CompensationPage() {
-  return (
-    <div className="panel no-print" style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-      <h2 className="text-xl font-bold mb-2">สรุปค่าตอบแทน</h2>
-      <p className="text-gray-600">สรุปยอดรวมค่าตอบแทนการปฏิบัติงานประจำเดือน</p>
-    </div>
-  )
+function LoginScreen({ onLogin, error }: { onLogin: (email:string,password:string)=>Promise<void>; error:string }) {
+  const [email,setEmail] = useState('')
+  const [password,setPassword] = useState('')
+  const [busy,setBusy] = useState(false)
+  async function submit(e: FormEvent) { e.preventDefault(); setBusy(true); await onLogin(email,password); setBusy(false) }
+  return <div className="login-screen"><div className="login-card">
+    <div className="login-logo"><Activity size={30}/></div><div className="eyebrow">KORKHO SMART ROSTER</div>
+    <h1>เข้าสู่ระบบ</h1><p>ระบบบริหารจัดการตารางเวรและค่าตอบแทน<br/>โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค จังหวัดสุรินทร์</p>
+    {error && <div className="alert error">{error}</div>}
+    <form onSubmit={submit}><label>อีเมล<input type="email" autoComplete="username" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com"/></label>
+      <label>รหัสผ่าน<input type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)} placeholder="กรอกรหัสผ่าน"/></label>
+      <button className="btn primary full-width" disabled={busy}>{busy?'กำลังเข้าสู่ระบบ...':'เข้าสู่ระบบ'}</button></form>
+    <div className="login-foot"><ShieldCheck size={15}/> เฉพาะผู้ได้รับอนุญาตเท่านั้น</div>
+  </div></div>
 }
 
 function SetupScreen() {
-  return (
-    <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc' }}>
-      <div style={{ textAlign: 'center', padding: '32px', backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-        <AlertCircle size={48} style={{ color: '#ef4444', margin: '0 auto 16px auto' }} />
-        <h2 style={{ fontSize: '20px', fontWeight: 'bold' }}>ยังไม่ได้ตั้งค่าการเชื่อมต่อ Supabase</h2>
-        <p style={{ color: '#64748b', marginTop: '8px' }}>กรุณากำหนด VITE_SUPABASE_URL และ VITE_SUPABASE_ANON_KEY ในไฟล์ .env</p>
-      </div>
-    </div>
-  )
+  return <div className="setup-screen"><div className="setup-card"><div className="brand-mark"><Activity size={26}/></div>
+    <h1>เตรียมเชื่อมต่อฐานข้อมูล</h1><p>ยังไม่ได้ตั้งค่าการเชื่อมต่อ Supabase กรุณาทำตามคู่มือ SETUP-TH.md ก่อนเปิดใช้งาน</p>
+    <ol><li>สร้างโปรเจกต์ Supabase</li><li>นำไฟล์ <b>supabase/schema.sql</b> ไปรันใน SQL Editor</li><li>คัดลอก <b>.env.example</b> เป็น <b>.env</b></li><li>กรอก Project URL และ Publishable/Anon Key</li><li>ปิดแล้วเปิดคำสั่ง npm run dev ใหม่</li></ol>
+  </div></div>
 }
 
-function LoginScreen({ onLogin, error }: { onLogin: (e: string, p: string) => void; error: string }) {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-
-  return (
-    <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f1f5f9' }}>
-      <form onSubmit={e => { e.preventDefault(); onLogin(email, password) }} style={{ width: '100%', maxWidth: '380px', padding: '32px', backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{ display: 'inline-flex', padding: '12px', backgroundColor: '#e0f2fe', borderRadius: '12px', color: '#0284c7', marginBottom: '12px' }}>
-            <Activity size={32} />
-          </div>
-          <h2 style={{ fontSize: '20px', fontWeight: 'bold' }}>KORKHO SMART ROSTER</h2>
-          <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>เข้าสู่ระบบบริหารจัดการตารางเวร</p>
-        </div>
-        {error && <div style={{ padding: '8px 12px', backgroundColor: '#fee2e2', color: '#b91c1c', borderRadius: '6px', fontSize: '13px', marginBottom: '16px' }}>{error}</div>}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <label style={{ fontSize: '13px', fontWeight: 500 }}>
-            อีเมล:
-            <input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} />
-          </label>
-          <label style={{ fontSize: '13px', fontWeight: 500 }}>
-            รหัสผ่าน:
-            <input type="password" required value={password} onChange={e => setPassword(e.target.value)} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} />
-          </label>
-          <button className="btn primary" style={{ width: '100%', marginTop: '8px', padding: '10px' }}>เข้าสู่ระบบ</button>
-        </div>
-      </form>
+function Dashboard({ staff, onNavigate }: {staff:Staff[]; onNavigate:(s:Section)=>void}) {
+  const active = staff.filter(s=>s.status==='active').length
+  const totalMorning = staff.reduce((n,s)=>n+Number(s.morning_rate||0),0)
+  const totalAfternoon = staff.reduce((n,s)=>n+Number(s.afternoon_rate||0),0)
+  return <><div className="page-heading no-print"><div><div className="eyebrow">OVERVIEW</div><h1>ภาพรวมระบบ</h1><p>ยินดีต้อนรับสู่ระบบบริหารจัดการตารางเวรและค่าตอบแทน</p></div><div className="today-pill"><Clock3 size={16}/>{new Intl.DateTimeFormat('th-TH',{dateStyle:'long',timeZone:'Asia/Bangkok'}).format(new Date())}</div></div>
+    <div className="stat-grid no-print">
+      <Stat icon={Users} label="บุคลากรทั้งหมด" value={staff.length.toLocaleString('th-TH')} note="รายชื่อในทะเบียน" tone="teal"/>
+      <Stat icon={UserRound} label="กำลังปฏิบัติงาน" value={active.toLocaleString('th-TH')} note="สถานะใช้งาน" tone="blue"/>
+      <Stat icon={CalendarDays} label="ประเภทเวร" value="2" note="เวรเช้าและเวรบ่าย" tone="purple"/>
+      <Stat icon={CircleDollarSign} label="อัตราค่าตอบแทนที่ตั้งไว้" value={(totalMorning+totalAfternoon).toLocaleString('th-TH')} note="ผลรวมอัตราต่อครั้ง ไม่ใช่ยอดเบิกจริง" tone="amber"/>
     </div>
-  )
+    <div className="content-grid no-print"><section className="panel welcome-panel"><div className="panel-icon"><Activity size={23}/></div><h2>เริ่มต้นจัดการระบบ</h2><p>เพิ่มทะเบียนบุคลากรและอัตราค่าตอบแทนก่อน จากนั้นจึงพัฒนาตารางเวรและการออกใบเบิกในขั้นตอนถัดไป</p><button className="btn primary" onClick={()=>onNavigate('staff')}><Users size={17}/> ไปที่จัดการบุคลากร</button></section>
+      <section className="panel checklist-panel"><div className="panel-title"><h2>สถานะการเตรียมระบบ</h2><span className="status-tag">ระยะเริ่มต้น</span></div>
+        {[['เชื่อมต่อฐานข้อมูล Supabase',true],['ระบบเข้าสู่ระบบ',true],['ทะเบียนบุคลากร',true],['ระบบจัดตารางเวร',true],['คำนวณค่าตอบแทน',true],['เอกสารราชการและใบเบิก',true],['ตั้งค่าระบบและสำรองข้อมูล',true]].map(([label,done])=><div className="check-row" key={String(label)}><span className={done?'check-done':'check-pending'}>{done?'✓':'○'}</span>{label}<small>{done?'พร้อมใช้งาน':'อยู่ระหว่างพัฒนา'}</small></div>)}
+      </section></div>
+    <div className="notice no-print"><AlertCircle size={18}/><div><b>หมายเหตุเกี่ยวกับข้อมูล</b><p>ระบบพร้อมใช้งานสมบูรณ์ในทุกโมดูลแล้ว</p></div></div>
+  </>
+}
+
+function Stat({icon:Icon,label,value,note,tone}:{icon:typeof Users;label:string;value:string;note:string;tone:string}) {
+  return <div className="stat-card"><div className={`stat-icon ${tone}`}><Icon size={20}/></div><div className="stat-label">{label}</div><div className="stat-value">{value}</div><div className="stat-note">{note}</div></div>
+}
+
+function StaffPage({staff,allCount,search,setSearch,loading,onAdd,onEdit,onToggle,onReorder,isAdmin}:{staff:Staff[];allCount:number;search:string;setSearch:(s:string)=>void;loading:boolean;onAdd:()=>void;onEdit:(s:Staff)=>void;onToggle:(s:Staff)=>void;onReorder:()=>void;isAdmin:boolean}) {
+  return <><div className="page-heading no-print"><div><div className="eyebrow">STAFF MANAGEMENT</div><h1>จัดการบุคลากร</h1><p>ทะเบียนบุคลากรและอัตราค่าตอบแทนรายบุคคล</p></div>
+    <div style={{ display: 'flex', gap: '8px' }}>
+      {isAdmin && (
+        <button className="btn secondary" onClick={onReorder} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <ListOrdered size={18}/> จัดเรียงลำดับบุคลากร
+        </button>
+      )}
+      {isAdmin && (
+        <button className="btn primary" onClick={onAdd} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Plus size={18}/> เพิ่มบุคลากร
+        </button>
+      )}
+    </div>
+  </div>
+    <div className="panel table-panel no-print"><div className="table-toolbar"><div className="table-count">บุคลากรทั้งหมด <b>{allCount}</b> ราย</div><div className="search-box"><Search size={17}/><input placeholder="ค้นหาชื่อ ตำแหน่ง หรือรหัส..." value={search} onChange={e=>setSearch(e.target.value)}/></div></div>
+      <div className="table-wrap"><table><thead><tr><th style={{ width: '60px' }}>ลำดับ</th><th>ชื่อ-นามสกุล</th><th>ตำแหน่ง</th><th>ประเภท</th><th className="number">เวรเช้า</th><th className="number">เวรบ่าย</th><th>สถานะ</th>{isAdmin&&<th>จัดการ</th>}</tr></thead>
+      <tbody>{loading?<tr><td colSpan={8} className="empty">กำลังโหลดข้อมูล...</td></tr>:staff.length===0?<tr><td colSpan={8} className="empty"><Users size={28}/><b>ยังไม่มีข้อมูลบุคลากร</b><span>เริ่มต้นโดยเพิ่มรายชื่อบุคลากรในระบบ</span></td></tr>:staff.map((p, index)=><tr key={p.id}><td className="code" style={{ textAlign: 'center', fontWeight: 'bold', color: '#0284c7' }}>{index + 1}</td><td><b>{p.first_name} {p.last_name}</b></td><td>{p.position}</td><td>{p.staff_type}</td><td className="number">{Number(p.morning_rate).toLocaleString('th-TH')}</td><td className="number">{Number(p.afternoon_rate).toLocaleString('th-TH')}</td><td><span className={`status ${p.status}`}>{p.status==='active'?'ใช้งาน':'ไม่ใช้งาน'}</span></td>{isAdmin&&<td><div className="actions"><button title="แก้ไข" onClick={()=>onEdit(p)}><Pencil size={16}/></button><button title={p.status==='active'?'ระงับ':'เปิดใช้งาน'} onClick={()=>onToggle(p)}>{p.status==='active'?'ระงับ':'เปิดใช้'}</button></div></td>}</tr>)}</tbody></table></div>
+      <div className="table-foot">แสดง {staff.length} จาก {allCount} รายการ · ข้อมูลจากฐานข้อมูล Supabase</div>
+    </div>
+  </>
 }
