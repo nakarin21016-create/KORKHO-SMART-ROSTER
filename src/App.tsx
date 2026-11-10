@@ -217,9 +217,9 @@ async function saveReorder() {
     setLoading(true)
 
     if (supabase) {
-      // ดึงข้อมูลเดิมของแต่ละคนมาด้วย เพื่อไม่ให้ติด Not-null constraint ของ Supabase
+      // ดึงข้อมูลเดิมของแต่ละคนมาด้วย (...item) เพื่อไม่ให้ติด Not-null constraint ใน Supabase
       const updates = orderedStaffList.map((item, index) => ({
-        ...item, // 👈 กระจายข้อมูลเดิม (first_name, last_name, ฯลฯ) ไปด้วย
+        ...item,
         display_order: index + 1
       }))
 
