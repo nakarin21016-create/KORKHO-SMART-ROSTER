@@ -2131,7 +2131,6 @@ function RosterCalendarPage({
       ) : (
         <div className="panel table-panel print-area" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '20px', border: '1px solid #e2e8f0' }}>
           <div style={{ textAlign: 'center', marginBottom: '16px', color: '#0f172a' }}>
-            {/* 🟢 ย่อฟอนต์เป็น 14px และใส่ whiteSpace: nowrap ให้อยู่ในบรรทัดเดียวกันทั้งหมด */}
             <h2 style={{ fontSize: '14px', fontWeight: 'bold', margin: '0 0 4px 0', whiteSpace: 'nowrap' }}>
               ตารางปฏิบัติงานของเจ้าหน้าที่โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค อำเภอเมืองสุรินทร์ เดือน {thaiMonthName} พ.ศ. {thaiYear} ตามคำสั่งสำนักงานสาธารณสุขอำเภอเมืองสุรินทร์ที่ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/{thaiYear} ลงวันที่.........................................
             </h2>
@@ -2190,12 +2189,14 @@ function RosterCalendarPage({
                   </tr>
                 ) : (
                   activeStaff.map((person, idx) => (
-                    <tr key={person.id} style={{ height: '38px' }}>
-                      <td style={{ border: '1px solid #000', textAlign: 'center' }}>{idx + 1}</td>
-                      <td style={{ border: '1px solid #000', padding: '5px 14px', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                    // 🟢 ขยายความสูงแถวเป็น 42px ยืดตารางในแนวตั้งให้โปร่งสวยงาม
+                    <tr key={person.id} style={{ height: '42px' }}>
+                      <td style={{ border: '1px solid #000', textAlign: 'center', verticalAlign: 'middle' }}>{idx + 1}</td>
+                      {/* 🟢 ใส่ line-height: 1.4 และ vertical-align: middle เพื่อให้สระ/วรรณยุกต์ไม่ชนเส้นขอบ */}
+                      <td style={{ border: '1px solid #000', padding: '6px 14px', fontSize: '12px', whiteSpace: 'nowrap', lineHeight: '1.4', verticalAlign: 'middle' }}>
                         <b>{person.first_name} {person.last_name}</b>
                       </td>
-                      <td style={{ border: '1px solid #000', padding: '5px 14px', fontSize: '12px', whiteSpace: 'nowrap' }}>
+                      <td style={{ border: '1px solid #000', padding: '6px 14px', fontSize: '12px', whiteSpace: 'nowrap', lineHeight: '1.4', verticalAlign: 'middle' }}>
                         {person.position}
                       </td>
 
@@ -2231,7 +2232,8 @@ function RosterCalendarPage({
                               fontWeight: 'bold',
                               fontSize: '12px',
                               backgroundColor: cellBg,
-                              color: textColor
+                              color: textColor,
+                              verticalAlign: 'middle'
                             }}
                           >
                             {symbol}
@@ -2239,7 +2241,7 @@ function RosterCalendarPage({
                         )
                       })}
 
-                      <td style={{ border: '1px solid #000', textAlign: 'center' }}></td>
+                      <td style={{ border: '1px solid #000', textAlign: 'center', verticalAlign: 'middle' }}></td>
                     </tr>
                   ))
                 )}
