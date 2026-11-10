@@ -2143,9 +2143,9 @@ function RosterCalendarPage({
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', border: '1px solid #000000' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f1f5f9' }}>
-                  <th style={{ border: '1px solid #000', padding: '4px', width: '35px', textAlign: 'center' }} rowSpan={2}>ลำดับ</th>
-                  <th style={{ border: '1px solid #000', padding: '4px', minWidth: '130px', textAlign: 'center' }} rowSpan={2}>ชื่อ</th>
-                  <th style={{ border: '1px solid #000', padding: '4px', minWidth: '120px', textAlign: 'center' }} rowSpan={2}>ตำแหน่ง</th>
+                  <th style={{ border: '1px solid #000', padding: '6px 4px', width: '35px', textAlign: 'center' }} rowSpan={2}>ลำดับ</th>
+                  <th style={{ border: '1px solid #000', padding: '6px 10px', minWidth: '170px', textAlign: 'center' }} rowSpan={2}>ชื่อ - นามสกุล</th>
+                  <th style={{ border: '1px solid #000', padding: '6px 8px', minWidth: '150px', textAlign: 'center' }} rowSpan={2}>ตำแหน่ง</th>
                   {daysInMonthList.map(d => (
                     <th 
                       key={`h-day-${d.day}`}
@@ -2160,7 +2160,7 @@ function RosterCalendarPage({
                       {d.day}
                     </th>
                   ))}
-                  <th style={{ border: '1px solid #000', padding: '4px', minWidth: '90px', textAlign: 'center' }} rowSpan={2}>ลายมือชื่อ</th>
+                  <th style={{ border: '1px solid #000', padding: '6px 4px', minWidth: '90px', textAlign: 'center' }} rowSpan={2}>ลายมือชื่อ</th>
                 </tr>
                 <tr style={{ backgroundColor: '#f8fafc' }}>
                   {daysInMonthList.map(d => (
@@ -2189,12 +2189,12 @@ function RosterCalendarPage({
                   </tr>
                 ) : (
                   activeStaff.map((person, idx) => (
-                    <tr key={person.id} style={{ height: '32px' }}>
+                    <tr key={person.id} style={{ height: '38px' }}>
                       <td style={{ border: '1px solid #000', textAlign: 'center' }}>{idx + 1}</td>
-                      <td style={{ border: '1px solid #000', padding: '2px 6px', whiteSpace: 'nowrap' }}>
+                      <td style={{ border: '1px solid #000', padding: '4px 10px', whiteSpace: 'nowrap' }}>
                         <b>{person.first_name} {person.last_name}</b>
                       </td>
-                      <td style={{ border: '1px solid #000', padding: '2px 6px', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                      <td style={{ border: '1px solid #000', padding: '4px 8px', fontSize: '11px', whiteSpace: 'nowrap' }}>
                         {person.position}
                       </td>
 
