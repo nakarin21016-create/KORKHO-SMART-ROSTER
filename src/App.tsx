@@ -2144,8 +2144,8 @@ function RosterCalendarPage({
               <thead>
                 <tr style={{ backgroundColor: '#f1f5f9' }}>
                   <th style={{ border: '1px solid #000', padding: '6px 4px', width: '35px', textAlign: 'center' }} rowSpan={2}>ลำดับ</th>
-                  <th style={{ border: '1px solid #000', padding: '6px 10px', minWidth: '170px', textAlign: 'center' }} rowSpan={2}>ชื่อ - นามสกุล</th>
-                  <th style={{ border: '1px solid #000', padding: '6px 8px', minWidth: '150px', textAlign: 'center' }} rowSpan={2}>ตำแหน่ง</th>
+                  <th style={{ border: '1px solid #000', padding: '6px 14px', minWidth: '190px', textAlign: 'center' }} rowSpan={2}>ชื่อ - นามสกุล</th>
+                  <th style={{ border: '1px solid #000', padding: '6px 12px', minWidth: '170px', textAlign: 'center' }} rowSpan={2}>ตำแหน่ง</th>
                   {daysInMonthList.map(d => (
                     <th 
                       key={`h-day-${d.day}`}
@@ -2191,10 +2191,10 @@ function RosterCalendarPage({
                   activeStaff.map((person, idx) => (
                     <tr key={person.id} style={{ height: '38px' }}>
                       <td style={{ border: '1px solid #000', textAlign: 'center' }}>{idx + 1}</td>
-                      <td style={{ border: '1px solid #000', padding: '4px 10px', whiteSpace: 'nowrap' }}>
+                      <td style={{ border: '1px solid #000', padding: '5px 14px', whiteSpace: 'nowrap' }}>
                         <b>{person.first_name} {person.last_name}</b>
                       </td>
-                      <td style={{ border: '1px solid #000', padding: '4px 8px', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                      <td style={{ border: '1px solid #000', padding: '5px 10px', fontSize: '11px', whiteSpace: 'nowrap' }}>
                         {person.position}
                       </td>
 
@@ -2206,18 +2206,19 @@ function RosterCalendarPage({
                         const isAfternoon = afternoonList.includes(person.id)
 
                         let symbol = ''
-                        let cellBg = 'transparent'
                         let textColor = '#000000'
+
+                        // 🟢 ไฮไลต์สีพื้นหลังคอลัมน์วันหยุดแบบทึบเต็มช่อง
+                        let cellBg = d.isOfficialHoliday ? '#fee2e2' : d.isCustomHoliday ? '#fef3c7' : d.isSunday ? '#fee2e2' : d.isSaturday ? '#e0f2fe' : 'transparent'
 
                         if (isMorning && isAfternoon) {
                           symbol = 'ช/บ'
-                          cellBg = '#fef08a'
+                          cellBg = '#fef08a' // ถ้าเป็นควง 2 เวร ให้เน้นสีเหลืองเด่นขึ้น
                         } else if (isMorning) {
                           symbol = 'ช'
                           textColor = '#b91c1c'
                         } else if (isAfternoon) {
                           symbol = 'บ'
-                          cellBg = '#fef08a'
                           textColor = '#854d0e'
                         }
 
