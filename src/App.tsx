@@ -217,11 +217,14 @@ async function saveReorder() {
     setLoading(true)
 
     if (supabase) {
-      // ดึงข้อมูลเดิมของแต่ละคนมาด้วย (...item) เพื่อไม่ให้ติด Not-null constraint ใน Supabase
-      const updates = orderedStaffList.map((item, index) => ({
-        ...item,
-        display_order: index + 1
-      }))
+      // ดึงข้อมูลเดิมมา แต่ละเว้น staff_code ออกไป ไม่ให้ส่งเข้า Supabase
+      const updates = orderedStaffList.map((item, index) => {
+        const { staff_code, ...rest } = item // 👈 ดึง staff_code ออก
+        return {
+          ...rest,
+          display_order: index + 1
+        }
+      })
 
       const { error: upsertErr } = await supabase
         .from('staff')
