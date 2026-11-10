@@ -211,22 +211,30 @@ export default function App() {
     setOrderedStaffList(list)
   }
 
-  async function saveReorder() {
-    setStaff(orderedStaffList)
-    setReorderModalOpen(false)
+async function saveReorder() {
+  setReorderModalOpen(false)
+  setLoading(true)
 
-    if (supabase) {
-      const updates = orderedStaffList.map((item, index) => ({
-        id: item.id,
-        display_order: index + 1
-      }))
-      const { error: upsertErr } = await supabase.from('staff').upsert(updates, { onConflict: 'id' })
-      if (upsertErr) {
-        setError(upsertErr.message)
-      }
+  if (supabase) {
+    const updates = orderedStaffList.map((item, index) => ({
+      id: item.id,
+      display_order: index + 1
+    }))
+    
+    // บันทึกลำดับใหม่ลง Supabase
+    const { error: upsertErr } = await supabase
+      .from('staff')
+      .upsert(updates, { onConflict: 'id' })
+
+    if (upsertErr) {
+      setError('ไม่สามารถบันทึกการจัดลำดับได้: ' + upsertErr.message)
+    } else {
+      // โหลดข้อมูลใหม่จาก Supabase ทันที เพื่อให้ filteredStaff อัปเดตตาม
       await loadStaff()
     }
   }
+  setLoading(false)
+}
 
   const filteredStaff = useMemo(() => {
     const q = search.toLocaleLowerCase('th')
