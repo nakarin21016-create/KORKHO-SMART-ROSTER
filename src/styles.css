@@ -15,16 +15,16 @@
    คลาสกำหนดสีพื้นหลังวันหยุด ให้พิมพ์สีทึบติดออกเครื่องพิมพ์
    =================================================== */
 
-/* 1. วันหยุดราชการ (สีทึบแบบวันเสาร์-อาทิตย์) */
+/* 1. วันหยุดราชการ */
 .official-holiday-header,
 .official-holiday-cell {
-  background-color: #cbd5e1 !important; /* สีเทาทึบไฮไลท์ */
+  background-color: #cbd5e1 !important;
   font-weight: bold !important;
   -webkit-print-color-adjust: exact !important;
   print-color-adjust: exact !important;
 }
 
-/* 2. วันหยุดพิเศษ มติ ครม. (สีเทาทึบอ่อน) */
+/* 2. วันหยุดพิเศษ มติ ครม. */
 .custom-holiday-header,
 .custom-holiday-cell {
   background-color: #cbd5e1 !important;
@@ -42,7 +42,7 @@
   print-color-adjust: exact !important;
 }
 
-/* บังคับให้บราวเซอร์พิมพ์สีพื้นหลังและขยายเซลล์ไม่ให้สระ/วรรณยุกต์โดนตัดขอบ */
+/* 🟢 CSS สำหรับการพิมพ์ (Print CSS) ทำงานเฉพาะตารางเวร (.roster-matrix-table) */
 @media print {
   th.official-holiday-header,
   td.official-holiday-cell,
@@ -55,29 +55,24 @@
     print-color-adjust: exact !important;
   }
 
-  /* 🟢 ขยายความสูงแถวตารางขณะพิมพ์ให้สูงโปร่ง สบายตา */
-  .print-area tr {
-    height: 52px !important;
+  /* ยืดความสูงเฉพาะตารางจัดเวรแนวยาว ป้องกันสระ/วรรณยุกต์ชนขอบ */
+  .roster-matrix-table tr {
+    height: 48px !important;
   }
 
-  /* 🟢 ขยายระยะบรรทัดและระยะห่างไม่ให้สระและวรรณยุกต์ไทยทับเส้นขอบ */
-  .print-area th, 
-  .print-area td {
+  .roster-matrix-table th, 
+  .roster-matrix-table td {
     border: 1px solid #000000 !important;
-    padding: 8px 6px !important;
-    line-height: 1.8 !important;
+    padding: 6px 4px !important;
+    line-height: 1.6 !important;
     vertical-align: middle !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* 🟢 ขยายระยะขอบซ้าย-ขวาสำหรับช่องลำดับ ชื่อ และตำแหน่ง */
-  .print-area td:nth-child(1) {
-    padding: 8px 4px !important;
-  }
-  .print-area td:nth-child(2),
-  .print-area td:nth-child(3) {
-    padding: 8px 14px !important;
-    line-height: 1.8 !important;
+  .roster-matrix-table td:nth-child(2),
+  .roster-matrix-table td:nth-child(3) {
+    padding: 6px 12px !important;
+    line-height: 1.6 !important;
   }
 }
