@@ -2132,7 +2132,7 @@ function RosterCalendarPage({
         <div className="panel table-panel print-area" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '20px', border: '1px solid #e2e8f0' }}>
           <div style={{ textAlign: 'center', marginBottom: '16px', color: '#0f172a' }}>
             <h2 style={{ fontSize: '17px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
-              ตารางปฏิบัติงานของเจ้าหน้าที่โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค อำเภอเมืองสุรินทร์ เดือน {thaiMonthName} พ.ศ. {thaiYear}
+              ตารางปฏิบัติงานของเจ้าหน้าที่โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค อำเภอเมืองสุรินทร์ เดือน {thaiMonthName} พ.ศ. {thaiYear} ตามคำสั่งสำนักงานสาธารณสุขอำเภอเมืองสุรินทร์ที่ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/{thaiYear} &nbsp;&nbsp;ลงวันที่.........................................
             </h2>
             <p style={{ fontSize: '13.5px', color: '#475569', margin: 0 }}>
               เรื่อง ให้เจ้าหน้าที่ปฏิบัติงานส่งเสริมสุขภาพเชิงรุก ปฏิบัติงานนอกเวลาราชการและวันหยุดราชการ
@@ -2145,7 +2145,7 @@ function RosterCalendarPage({
                 <tr style={{ backgroundColor: '#f1f5f9' }}>
                   <th style={{ border: '1px solid #000', padding: '6px 4px', width: '35px', textAlign: 'center' }} rowSpan={2}>ลำดับ</th>
                   <th style={{ border: '1px solid #000', padding: '6px 14px', minWidth: '190px', textAlign: 'center' }} rowSpan={2}>ชื่อ - นามสกุล</th>
-                  <th style={{ border: '1px solid #000', padding: '6px 12px', minWidth: '170px', textAlign: 'center' }} rowSpan={2}>ตำแหน่ง</th>
+                  <th style={{ border: '1px solid #000', padding: '6px 14px', minWidth: '180px', textAlign: 'center' }} rowSpan={2}>ตำแหน่ง</th>
                   {daysInMonthList.map(d => (
                     <th 
                       key={`h-day-${d.day}`}
@@ -2191,10 +2191,10 @@ function RosterCalendarPage({
                   activeStaff.map((person, idx) => (
                     <tr key={person.id} style={{ height: '38px' }}>
                       <td style={{ border: '1px solid #000', textAlign: 'center' }}>{idx + 1}</td>
-                      <td style={{ border: '1px solid #000', padding: '5px 14px', whiteSpace: 'nowrap' }}>
+                      <td style={{ border: '1px solid #000', padding: '5px 14px', fontSize: '12px', whiteSpace: 'nowrap' }}>
                         <b>{person.first_name} {person.last_name}</b>
                       </td>
-                      <td style={{ border: '1px solid #000', padding: '5px 10px', fontSize: '11px', whiteSpace: 'nowrap' }}>
+                      <td style={{ border: '1px solid #000', padding: '5px 14px', fontSize: '12px', whiteSpace: 'nowrap' }}>
                         {person.position}
                       </td>
 
@@ -2208,12 +2208,11 @@ function RosterCalendarPage({
                         let symbol = ''
                         let textColor = '#000000'
 
-                        // 🟢 ไฮไลต์สีพื้นหลังคอลัมน์วันหยุดแบบทึบเต็มช่อง
                         let cellBg = d.isOfficialHoliday ? '#fee2e2' : d.isCustomHoliday ? '#fef3c7' : d.isSunday ? '#fee2e2' : d.isSaturday ? '#e0f2fe' : 'transparent'
 
                         if (isMorning && isAfternoon) {
                           symbol = 'ช/บ'
-                          cellBg = '#fef08a' // ถ้าเป็นควง 2 เวร ให้เน้นสีเหลืองเด่นขึ้น
+                          cellBg = '#fef08a'
                         } else if (isMorning) {
                           symbol = 'ช'
                           textColor = '#b91c1c'
