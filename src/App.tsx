@@ -2143,15 +2143,15 @@ function RosterCalendarPage({
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', border: '1px solid #000000' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f1f5f9' }}>
-                  <th style={{ border: '1px solid #000', padding: '6px 4px', width: '35px', textAlign: 'center' }} rowSpan={2}>ลำดับ</th>
-                  <th style={{ border: '1px solid #000', padding: '6px 14px', minWidth: '190px', textAlign: 'center' }} rowSpan={2}>ชื่อ - นามสกุล</th>
-                  <th style={{ border: '1px solid #000', padding: '6px 14px', minWidth: '180px', textAlign: 'center' }} rowSpan={2}>ตำแหน่ง</th>
+                  <th style={{ border: '1px solid #000', padding: '8px 4px', width: '35px', textAlign: 'center' }} rowSpan={2}>ลำดับ</th>
+                  <th style={{ border: '1px solid #000', padding: '8px 14px', minWidth: '190px', textAlign: 'center' }} rowSpan={2}>ชื่อ - นามสกุล</th>
+                  <th style={{ border: '1px solid #000', padding: '8px 14px', minWidth: '180px', textAlign: 'center' }} rowSpan={2}>ตำแหน่ง</th>
                   {daysInMonthList.map(d => (
                     <th 
                       key={`h-day-${d.day}`}
                       style={{ 
                         border: '1px solid #000', 
-                        padding: '3px 2px', 
+                        padding: '4px 2px', 
                         textAlign: 'center', 
                         width: '26px',
                         backgroundColor: d.isOfficialHoliday ? '#fca5a5' : d.isCustomHoliday ? '#fde68a' : d.isSunday ? '#fca5a5' : d.isSaturday ? '#bae6fd' : '#f1f5f9'
@@ -2160,7 +2160,7 @@ function RosterCalendarPage({
                       {d.day}
                     </th>
                   ))}
-                  <th style={{ border: '1px solid #000', padding: '6px 4px', minWidth: '90px', textAlign: 'center' }} rowSpan={2}>ลายมือชื่อ</th>
+                  <th style={{ border: '1px solid #000', padding: '8px 4px', minWidth: '90px', textAlign: 'center' }} rowSpan={2}>ลายมือชื่อ</th>
                 </tr>
                 <tr style={{ backgroundColor: '#f8fafc' }}>
                   {daysInMonthList.map(d => (
@@ -2168,7 +2168,7 @@ function RosterCalendarPage({
                       key={`h-wday-${d.day}`}
                       style={{ 
                         border: '1px solid #000', 
-                        padding: '2px 1px', 
+                        padding: '3px 1px', 
                         textAlign: 'center', 
                         fontSize: '11px',
                         color: (d.isSunday || d.isOfficialHoliday) ? '#dc2626' : d.isCustomHoliday ? '#b45309' : d.isSaturday ? '#0284c7' : '#000000',
@@ -2189,13 +2189,13 @@ function RosterCalendarPage({
                   </tr>
                 ) : (
                   activeStaff.map((person, idx) => (
-                    // 🟢 ขยายความสูงแถวเป็น 44px
-                    <tr key={person.id} style={{ height: '44px' }}>
-                      <td style={{ border: '1px solid #000', textAlign: 'center', verticalAlign: 'middle' }}>{idx + 1}</td>
-                      <td style={{ border: '1px solid #000', padding: '6px 14px', fontSize: '12px', whiteSpace: 'nowrap', lineHeight: '1.6', verticalAlign: 'middle' }}>
+                    // 🟢 ปรับเพิ่มความสูงแถวเป็น 52px และใส่ padding แนวตั้ง 8px
+                    <tr key={person.id} style={{ height: '52px' }}>
+                      <td style={{ border: '1px solid #000', textAlign: 'center', verticalAlign: 'middle', padding: '8px 4px' }}>{idx + 1}</td>
+                      <td style={{ border: '1px solid #000', padding: '8px 14px', fontSize: '12px', whiteSpace: 'nowrap', lineHeight: '1.8', verticalAlign: 'middle' }}>
                         <b>{person.first_name} {person.last_name}</b>
                       </td>
-                      <td style={{ border: '1px solid #000', padding: '6px 14px', fontSize: '12px', whiteSpace: 'nowrap', lineHeight: '1.6', verticalAlign: 'middle' }}>
+                      <td style={{ border: '1px solid #000', padding: '8px 14px', fontSize: '12px', whiteSpace: 'nowrap', lineHeight: '1.8', verticalAlign: 'middle' }}>
                         {person.position}
                       </td>
 
@@ -2230,11 +2230,12 @@ function RosterCalendarPage({
                               textAlign: 'center', 
                               fontWeight: 'bold',
                               fontSize: '11px',
-                              whiteSpace: 'nowrap', /* 🟢 ห้ามขึ้นบรรทัดใหม่เด็ดขาด */
+                              whiteSpace: 'nowrap',
                               backgroundColor: cellBg,
                               color: textColor,
-                              lineHeight: '1.6',
-                              verticalAlign: 'middle'
+                              lineHeight: '1.8',
+                              verticalAlign: 'middle',
+                              padding: '8px 2px'
                             }}
                           >
                             {symbol}
@@ -2242,7 +2243,7 @@ function RosterCalendarPage({
                         )
                       })}
 
-                      <td style={{ border: '1px solid #000', textAlign: 'center', verticalAlign: 'middle' }}></td>
+                      <td style={{ border: '1px solid #000', textAlign: 'center', verticalAlign: 'middle', padding: '8px 4px' }}></td>
                     </tr>
                   ))
                 )}
