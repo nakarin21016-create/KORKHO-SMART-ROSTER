@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   Activity, CalendarDays, CircleDollarSign, FileText,
   LayoutDashboard, LogOut, Menu, Plus, Search, Settings, ShieldCheck,
-  Users, X, Pencil, UserRound, Clock3, AlertCircle, Save, Loader2, Table, Printer, UserCheck, Trash2, ArrowUp, ArrowDown, ListOrdered, Building, Database, KeyRound, Download,ClipboardList
+  Users, X, Pencil, UserRound, Clock3, AlertCircle, Save, Loader2, Table, Printer, UserCheck, Trash2, ArrowUp, ArrowDown, ListOrdered, Building, Database, KeyRound, Download, ClipboardList
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from './lib/supabase'
 import type { Staff, StaffType } from './types'
@@ -33,6 +33,28 @@ const emptyForm = {
 }
 
 const WEEKDAYS_SHORT = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
+
+const OFFICIAL_HOLIDAYS: Record<string, string> = {
+  '2026-01-01': 'วันขึ้นปีใหม่',
+  '2026-03-03': 'วันมาฆบูชา',
+  '2026-04-06': 'วันพระบาทสมเด็จพระพุทธยอดฟ้าจุฬาโลกมหาราชฯ',
+  '2026-04-13': 'วันสงกรานต์',
+  '2026-04-14': 'วันสงกรานต์',
+  '2026-04-15': 'วันสงกรานต์',
+  '2026-05-01': 'วันแรงงานแห่งชาติ',
+  '2026-05-04': 'วันฉัตรมงคล',
+  '2026-05-31': 'วันวิสาขบูชา',
+  '2026-06-03': 'วันเฉลิมพระชนมพรรษา สมเด็จพระนางเจ้าฯ พระบรมราชินี',
+  '2026-07-28': 'วันเฉลิมพระชนมพรรษา พระบาทสมเด็จพระเจ้าอยู่หัว',
+  '2026-07-29': 'วันอาสาฬหบูชา',
+  '2026-07-30': 'วันเข้าพรรษา',
+  '2026-08-12': 'วันแม่แห่งชาติ',
+  '2026-10-13': 'วันนวมินทรมหาราช',
+  '2026-10-23': 'วันปิยมหาราช',
+  '2026-12-05': 'วันพ่อแห่งชาติ',
+  '2026-12-10': 'วันรัฐธรรมนูญ',
+  '2026-12-31': 'วันสิ้นปี',
+}
 
 function arabicToThaiBaht(numbers: number): string {
   if (numbers === 0) return 'ศูนย์บาทถ้วน'
@@ -68,6 +90,14 @@ export default function App() {
   const [saving, setSaving] = useState(false)
   const [mobileNav, setMobileNav] = useState(false)
   const [userRole, setUserRole] = useState('user')
+
+  const [customHolidays, setCustomHolidays] = useState<number[]>([])
+
+  function toggleCustomHoliday(day: number) {
+    setCustomHolidays(prev =>
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+    )
+  }
 
   const [reorderModalOpen, setReorderModalOpen] = useState(false)
   const [orderedStaffList, setOrderedStaffList] = useState<Staff[]>([])
@@ -153,7 +183,6 @@ export default function App() {
     setSaving(true)
     setError('')
 
-    // คำนวณลำดับ: ถ้าแก้ไขคนเดิมให้คงลำดับ display_order ไว้ ถ้าเป็นคนใหม่ให้ต่อท้าย
     const nextOrder = editing 
       ? (editing.display_order || 999) 
       : (staff.length > 0 ? Math.max(...staff.map(s => s.display_order || 0)) + 1 : 1)
@@ -211,15 +240,14 @@ export default function App() {
     setOrderedStaffList(list)
   }
 
-async function saveReorder() {
+  async function saveReorder() {
     setStaff(orderedStaffList)
     setReorderModalOpen(false)
     setLoading(true)
 
     if (supabase) {
-      // ดึงข้อมูลเดิมมา แต่ละเว้น staff_code ออกไป ไม่ให้ส่งเข้า Supabase
       const updates = orderedStaffList.map((item, index) => {
-        const { staff_code, ...rest } = item // 👈 ดึง staff_code ออก
+        const { staff_code, ...rest } = item
         return {
           ...rest,
           display_order: index + 1
@@ -233,11 +261,12 @@ async function saveReorder() {
       if (upsertErr) {
         setError('ไม่สามารถบันทึกการจัดลำดับได้: ' + upsertErr.message)
       } else {
-        await loadStaff() // โหลดข้อมูลใหม่หลังจากบันทึกสำเร็จ
+        await loadStaff()
       }
     }
     setLoading(false)
   }
+
   const filteredStaff = useMemo(() => {
     const q = search.toLocaleLowerCase('th')
     return staff.filter((p) =>
@@ -360,10 +389,23 @@ async function saveReorder() {
           {section === 'dashboard' && <Dashboard staff={staff} onNavigate={setSection}/>}
           {section === 'staff' && <StaffPage staff={filteredStaff} allCount={staff.length} search={search} setSearch={setSearch}
             loading={loading} onAdd={openAdd} onEdit={openEdit} onToggle={toggleStatus} onReorder={openReorderModal} isAdmin={userRole === 'admin'}/>}
-          {section === 'roster' && <RosterCalendarPage staff={staff} isAdmin={userRole === 'admin'} />}
+          {section === 'roster' && (
+            <RosterCalendarPage 
+              staff={staff} 
+              isAdmin={userRole === 'admin'} 
+              customHolidays={customHolidays}
+              toggleCustomHoliday={toggleCustomHoliday}
+            />
+          )}
           {section === 'work-summary' && <WorkSummary/>}
           {section === 'compensation' && <CompensationPage staff={staff} />}
-          {section === 'documents' && <DocumentsPage staff={staff} />}
+          {section === 'documents' && (
+            <DocumentsPage 
+              staff={staff} 
+              customHolidays={customHolidays}
+              toggleCustomHoliday={toggleCustomHoliday}
+            />
+          )}
           {section === 'settings' && <SettingsPage userEmail={session.user.email} userRole={userRole} staffCount={staff.length} />}
         </div>
       </main>
@@ -489,7 +531,6 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }} className="no-print">
-        {/* ข้อมูลหน่วยงาน */}
         <form onSubmit={handleSaveSettings} className="panel" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '20px', border: '1px solid #cbd5e1' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Building size={18} /> ข้อมูลสถานพยาบาล / หน่วยงาน
@@ -543,7 +584,6 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
           </button>
         </form>
 
-        {/* ผู้ใช้งาน & ระบบความปลอดภัย */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div className="panel" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '20px', border: '1px solid #cbd5e1' }}>
             <h3 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -562,7 +602,6 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
             </div>
           </div>
 
-          {/* การจัดการข้อมูลและสำรอง */}
           <div className="panel" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '20px', border: '1px solid #cbd5e1' }}>
             <h3 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Database size={18} /> สำรองข้อมูล & ฐานข้อมูล
@@ -589,41 +628,22 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
     </>
   )
 }
-const OFFICIAL_HOLIDAYS: Record<string, string> = {
-  '2026-01-01': 'วันขึ้นปีใหม่',
-  '2026-03-03': 'วันมาฆบูชา',
-  '2026-04-06': 'วันพระบาทสมเด็จพระพุทธยอดฟ้าจุฬาโลกมหาราชฯ',
-  '2026-04-13': 'วันสงกรานต์',
-  '2026-04-14': 'วันสงกรานต์',
-  '2026-04-15': 'วันสงกรานต์',
-  '2026-05-01': 'วันแรงงานแห่งชาติ',
-  '2026-05-04': 'วันฉัตรมงคล',
-  '2026-05-31': 'วันวิสาขบูชา',
-  '2026-06-03': 'วันเฉลิมพระชนมพรรษา สมเด็จพระนางเจ้าฯ พระบรมราชินี',
-  '2026-07-28': 'วันเฉลิมพระชนมพรรษา พระบาทสมเด็จพระเจ้าอยู่หัว',
-  '2026-07-29': 'วันอาสาฬหบูชา',
-  '2026-07-30': 'วันเข้าพรรษา',
-  '2026-08-12': 'วันแม่แห่งชาติ',
-  '2026-10-13': 'วันนวมินทรมหาราช',
-  '2026-10-23': 'วันปิยมหาราช',
-  '2026-12-05': 'วันพ่อแห่งชาติ',
-  '2026-12-10': 'วันรัฐธรรมนูญ',
-  '2026-12-31': 'วันสิ้นปี',
-}
-function DocumentsPage({ staff }: { staff: Staff[] }) {
+
+function DocumentsPage({ 
+  staff, 
+  customHolidays, 
+  toggleCustomHoliday 
+}: { 
+  staff: Staff[]; 
+  customHolidays: number[]; 
+  toggleCustomHoliday: (day: number) => void 
+}) {
   const [year, setYear] = useState<number>(2026)
   const [month, setMonth] = useState<number>(10)
   const [orderNo, setOrderNo] = useState<string>('46/2569')
   const [orderDate, setOrderDate] = useState<string>('29 กันยายน พ.ศ.2569')
 
   const [doubleRateDays, setDoubleRateDays] = useState<number[]>([])
-  const [customHolidays, setCustomHolidays] = useState<number[]>([])
-
-  function toggleCustomHoliday(day: number) {
-    setCustomHolidays(prev =>
-      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
-    )
-  }
 
   const [signers, setSigners] = useState<Signer[]>([
     { id: '1', name: 'นางปิยานาถ เหมือนวาจา', position: 'ผอ.รพ.สต.คอโค', role: 'ผู้ควบคุม' },
@@ -649,7 +669,7 @@ function DocumentsPage({ staff }: { staff: Staff[] }) {
 
   const activeStaff = useMemo(() => staff.filter(s => s.status === 'active'), [staff])
 
-const daysInMonthList = useMemo(() => {
+  const daysInMonthList = useMemo(() => {
     const totalDays = new Date(year, month, 0).getDate()
     const list = []
     for (let day = 1; day <= totalDays; day++) {
@@ -660,7 +680,7 @@ const daysInMonthList = useMemo(() => {
       const dateStr = `${year}-${monthStr}-${dayStr}`
       
       const isOfficialHoliday = !!OFFICIAL_HOLIDAYS[dateStr]
-      const isCustomHoliday = customHolidays.includes(day)
+      const isCustomHoliday = (customHolidays || []).includes(day)
       const isWeekend = dayOfWeekIndex === 0 || dayOfWeekIndex === 6
 
       list.push({
@@ -923,7 +943,11 @@ const daysInMonthList = useMemo(() => {
           </label>
 
           <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
-            ลงวันที่คำสั่ง:{/* แผงปุ่มสำหรับติ๊กเลือกวันหยุดพิเศษ (มติ ครม.) */}
+            ลงวันที่คำสั่ง:
+            <input value={orderDate} onChange={e => setOrderDate(e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} />
+          </label>
+        </div>
+
         <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
           <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#b45309', display: 'block', marginBottom: '6px' }}>
             📌 ติ๊กเลือกวันหยุดพิเศษประจำเดือน (มติ ครม. / วันหยุดชดเชยเพิ่มเติม):
@@ -950,9 +974,6 @@ const daysInMonthList = useMemo(() => {
               </button>
             ))}
           </div>
-        </div>
-            <input value={orderDate} onChange={e => setOrderDate(e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} />
-          </label>
         </div>
 
         <hr style={{ margin: '16px 0', borderColor: '#e2e8f0' }} />
@@ -1076,8 +1097,8 @@ const daysInMonthList = useMemo(() => {
                         textAlign: 'center', 
                         width: '17px', 
                         fontSize: '9.5px',
-                        backgroundColor: d.isWeekend ? '#cbd5e1' : 'transparent',
-                        fontWeight: d.isWeekend ? 'bold' : 'normal'
+                        backgroundColor: d.isOfficialHoliday ? '#fca5a5' : d.isCustomHoliday ? '#fde68a' : d.isWeekend ? '#cbd5e1' : 'transparent',
+                        fontWeight: (d.isWeekend || d.isOfficialHoliday || d.isCustomHoliday) ? 'bold' : 'normal'
                       }}
                     >
                       {d.day}
@@ -1115,7 +1136,7 @@ const daysInMonthList = useMemo(() => {
                             border: '1px solid #000', 
                             textAlign: 'center', 
                             fontSize: '9.5px',
-                            backgroundColor: d.isWeekend ? '#e2e8f0' : 'transparent'
+                            backgroundColor: d.isOfficialHoliday ? '#fee2e2' : d.isCustomHoliday ? '#fef3c7' : d.isWeekend ? '#e2e8f0' : 'transparent'
                           }}
                         >
                           {row.activeDays.includes(d.day) ? '/' : ''}
@@ -1508,12 +1529,21 @@ function CompensationPage({ staff }: { staff: Staff[] }) {
   )
 }
 
-function RosterCalendarPage({ staff, isAdmin }: { staff: Staff[]; isAdmin: boolean }) {
+function RosterCalendarPage({
+  staff,
+  isAdmin,
+  customHolidays,
+  toggleCustomHoliday,
+}: {
+  staff: Staff[]
+  isAdmin: boolean
+  customHolidays: number[]
+  toggleCustomHoliday: (day: number) => void
+}) {
   const [year, setYear] = useState<number>(2026)
   const [month, setMonth] = useState<number>(11)
   const [scheduleId, setScheduleId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'calendar' | 'matrix'>('calendar')
-  
   const [dutyMap, setDutyMap] = useState<Record<string, string[]>>({})
   const [loading, setLoading] = useState<boolean>(false)
   const [saving, setSaving] = useState<boolean>(false)
@@ -1530,6 +1560,11 @@ function RosterCalendarPage({ staff, isAdmin }: { staff: Staff[]; isAdmin: boole
       const dayStr = String(day).padStart(2, '0')
       const monthStr = String(month).padStart(2, '0')
       const dateStr = `${year}-${monthStr}-${dayStr}`
+      
+      const isOfficialHoliday = !!OFFICIAL_HOLIDAYS[dateStr]
+      const isCustomHoliday = (customHolidays || []).includes(day)
+      const isWeekend = dayOfWeekIndex === 0 || dayOfWeekIndex === 6
+
       list.push({
         day,
         dateStr,
@@ -1537,10 +1572,14 @@ function RosterCalendarPage({ staff, isAdmin }: { staff: Staff[]; isAdmin: boole
         dayOfWeekName: WEEKDAYS_SHORT[dayOfWeekIndex],
         isSunday: dayOfWeekIndex === 0,
         isSaturday: dayOfWeekIndex === 6,
+        isWeekend,
+        isOfficialHoliday,
+        isCustomHoliday,
+        holidayName: OFFICIAL_HOLIDAYS[dateStr] || (isCustomHoliday ? 'วันหยุดพิเศษ (มติ ครม.)' : ''),
       })
     }
     return list
-  }, [year, month])
+  }, [year, month, customHolidays])
 
   const calendarWeeks = useMemo(() => {
     const firstDayIndex = new Date(year, month - 1, 1).getDay()
@@ -1552,6 +1591,8 @@ function RosterCalendarPage({ staff, isAdmin }: { staff: Staff[]; isAdmin: boole
       dayOfWeekIndex: number
       isSunday: boolean
       isSaturday: boolean
+      isOfficialHoliday: boolean
+      isCustomHoliday: boolean
     } | null> = []
 
     for (let i = 0; i < firstDayIndex; i++) {
@@ -1571,6 +1612,8 @@ function RosterCalendarPage({ staff, isAdmin }: { staff: Staff[]; isAdmin: boole
         dayOfWeekIndex,
         isSunday: dayOfWeekIndex === 0,
         isSaturday: dayOfWeekIndex === 6,
+        isOfficialHoliday: !!OFFICIAL_HOLIDAYS[dateStr],
+        isCustomHoliday: (customHolidays || []).includes(day),
       })
     }
 
@@ -1584,7 +1627,7 @@ function RosterCalendarPage({ staff, isAdmin }: { staff: Staff[]; isAdmin: boole
     }
 
     return weeks
-  }, [year, month])
+  }, [year, month, customHolidays])
 
   useEffect(() => {
     void loadRoster()
@@ -1822,6 +1865,36 @@ function RosterCalendarPage({ staff, isAdmin }: { staff: Staff[]; isAdmin: boole
         </div>
       </div>
 
+      {isAdmin && (
+        <div className="panel no-print mb-4" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '14px', border: '1px solid #cbd5e1' }}>
+          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#b45309', marginBottom: '8px' }}>
+            📌 กำหนดวันหยุดพิเศษประจำเดือน (มติ ครม. / วันหยุดชดเชยเพิ่มเติม):
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {daysInMonthList.map(d => (
+              <button
+                key={d.day}
+                type="button"
+                onClick={() => toggleCustomHoliday(d.day)}
+                style={{
+                  padding: '4px 9px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: d.isCustomHoliday ? 'bold' : 'normal',
+                  border: d.isCustomHoliday ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                  backgroundColor: d.isCustomHoliday ? '#fef3c7' : '#ffffff',
+                  color: d.isCustomHoliday ? '#b45309' : '#475569',
+                  cursor: 'pointer',
+                }}
+                title={d.holidayName || `วันที่ ${d.day}`}
+              >
+                {d.day} {d.isOfficialHoliday ? '🔴' : d.isCustomHoliday ? '⭐' : ''}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {msg && (
         <div className={`alert ${msg.type === 'error' ? 'error' : 'success'} mb-4 no-print`}>
           <AlertCircle size={17} />
@@ -1886,7 +1959,7 @@ function RosterCalendarPage({ staff, isAdmin }: { staff: Staff[]; isAdmin: boole
                               border: '1px solid #cbd5e1',
                               padding: '6px',
                               verticalAlign: 'top',
-                              backgroundColor: cell.isSunday ? '#fff5f5' : cell.isSaturday ? '#f0f9ff' : '#ffffff',
+                              backgroundColor: cell.isOfficialHoliday ? '#fee2e2' : cell.isCustomHoliday ? '#fef3c7' : cell.isSunday ? '#fff5f5' : cell.isSaturday ? '#f0f9ff' : '#ffffff',
                               minHeight: '140px'
                             }}
                           >
@@ -1895,10 +1968,10 @@ function RosterCalendarPage({ staff, isAdmin }: { staff: Staff[]; isAdmin: boole
                                 style={{
                                   fontWeight: 'bold',
                                   fontSize: '14px',
-                                  color: cell.isSunday ? '#dc2626' : cell.isSaturday ? '#0284c7' : '#1e293b'
+                                  color: cell.isOfficialHoliday ? '#dc2626' : cell.isCustomHoliday ? '#b45309' : cell.isSunday ? '#dc2626' : cell.isSaturday ? '#0284c7' : '#1e293b'
                                 }}
                               >
-                                {cell.day}
+                                {cell.day} {cell.isOfficialHoliday ? '🔴' : cell.isCustomHoliday ? '⭐' : ''}
                               </span>
                             </div>
 
@@ -2081,7 +2154,7 @@ function RosterCalendarPage({ staff, isAdmin }: { staff: Staff[]; isAdmin: boole
                         padding: '3px 2px', 
                         textAlign: 'center', 
                         width: '24px',
-                        backgroundColor: d.isSunday ? '#fca5a5' : d.isSaturday ? '#bae6fd' : '#f1f5f9'
+                        backgroundColor: d.isOfficialHoliday ? '#fca5a5' : d.isCustomHoliday ? '#fde68a' : d.isSunday ? '#fca5a5' : d.isSaturday ? '#bae6fd' : '#f1f5f9'
                       }}
                     >
                       {d.day}
@@ -2098,8 +2171,8 @@ function RosterCalendarPage({ staff, isAdmin }: { staff: Staff[]; isAdmin: boole
                         padding: '2px 1px', 
                         textAlign: 'center', 
                         fontSize: '11px',
-                        color: d.isSunday ? '#dc2626' : d.isSaturday ? '#0284c7' : '#000000',
-                        backgroundColor: d.isSunday ? '#fee2e2' : d.isSaturday ? '#e0f2fe' : '#ffffff'
+                        color: (d.isSunday || d.isOfficialHoliday) ? '#dc2626' : d.isCustomHoliday ? '#b45309' : d.isSaturday ? '#0284c7' : '#000000',
+                        backgroundColor: d.isOfficialHoliday ? '#fee2e2' : d.isCustomHoliday ? '#fef3c7' : d.isSunday ? '#fee2e2' : d.isSaturday ? '#e0f2fe' : '#ffffff'
                       }}
                     >
                       {d.dayOfWeekName}
