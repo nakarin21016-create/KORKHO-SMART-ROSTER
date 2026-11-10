@@ -172,17 +172,17 @@ export function WorkSummary() {
           body * {
             visibility: hidden;
           }
-          .sidebar, .topbar, .page-heading, .stats-grid, .calendar-panel, .no-print {
+          .sidebar, .topbar, .page-heading, .stats-grid, .calendar-panel, .no-print, .modal-backdrop {
             display: none !important;
           }
-          .print-area, .print-area * {
-            visibility: visible;
+          .print-summary-area, .print-summary-area * {
+            visibility: visible !important;
           }
-          .print-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
+          .print-summary-area {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
             border: none !important;
             box-shadow: none !important;
             padding: 0 !important;
@@ -222,40 +222,40 @@ export function WorkSummary() {
 
       {/* สรุปยอดรวมประจำเดือน Cards */}
       <div 
-  className="stats-grid no-print" 
-  style={{ 
-    display: 'grid', 
-    gridTemplateColumns: 'repeat(3, 1fr)', 
-    gap: '16px' 
-  }}
->
-  <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px' }}>
-    <div className="stat-icon text-blue-600"><UserCheck size={28} /></div>
-    <div>
-      <div className="stat-label text-gray-500 text-sm">ผู้รับบริการทั้งหมด</div>
-      <div className="stat-value text-2xl font-bold">{monthlyTotals.patients.toLocaleString()}</div>
-      <div className="stat-sub text-xs text-gray-400">ราย/เดือน</div>
-    </div>
-  </div>
+        className="stats-grid no-print" 
+        style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(3, 1fr)', 
+          gap: '16px' 
+        }}
+      >
+        <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px' }}>
+          <div className="stat-icon text-blue-600"><UserCheck size={28} /></div>
+          <div>
+            <div className="stat-label text-gray-500 text-sm">ผู้รับบริการทั้งหมด</div>
+            <div className="stat-value text-2xl font-bold">{monthlyTotals.patients.toLocaleString()}</div>
+            <div className="stat-sub text-xs text-gray-400">ราย/เดือน</div>
+          </div>
+        </div>
 
-  <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px' }}>
-    <div className="stat-icon text-emerald-600"><Banknote size={28} /></div>
-    <div>
-      <div className="stat-label text-gray-500 text-sm">ผู้ป่วยเก็บเงินได้</div>
-      <div className="stat-value text-2xl font-bold">{monthlyTotals.cash.toLocaleString()}</div>
-      <div className="stat-sub text-xs text-gray-400">ราย/เดือน</div>
-    </div>
-  </div>
+        <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px' }}>
+          <div className="stat-icon text-emerald-600"><Banknote size={28} /></div>
+          <div>
+            <div className="stat-label text-gray-500 text-sm">ผู้ป่วยเก็บเงินได้</div>
+            <div className="stat-value text-2xl font-bold">{monthlyTotals.cash.toLocaleString()}</div>
+            <div className="stat-sub text-xs text-gray-400">ราย/เดือน</div>
+          </div>
+        </div>
 
-  <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px' }}>
-    <div className="stat-icon text-amber-600"><CreditCard size={28} /></div>
-    <div>
-      <div className="stat-label text-gray-500 text-sm">สิทธิ UC / ประกันสุขภาพ</div>
-      <div className="stat-value text-2xl font-bold">{monthlyTotals.uc.toLocaleString()}</div>
-      <div className="stat-sub text-xs text-gray-400">ราย/เดือน</div>
-    </div>
-  </div>
-</div>
+        <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px' }}>
+          <div className="stat-icon text-amber-600"><CreditCard size={28} /></div>
+          <div>
+            <div className="stat-label text-gray-500 text-sm">สิทธิ UC / ประกันสุขภาพ</div>
+            <div className="stat-value text-2xl font-bold">{monthlyTotals.uc.toLocaleString()}</div>
+            <div className="stat-sub text-xs text-gray-400">ราย/เดือน</div>
+          </div>
+        </div>
+      </div>
 
       {/* ปฏิทินแสดงและกรอกข้อมูล */}
       <div className="panel calendar-panel no-print" style={{ backgroundColor: '#ffffff', padding: '20px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
@@ -337,49 +337,49 @@ export function WorkSummary() {
       </div>
 
       {/* ตารางพิมพ์สรุปผลงาน */}
-<div className="print-summary-area panel" style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-  <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-    <h2 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>
-      สรุปผลการปฏิบัติงานนอกเวลาราชการ
-    </h2>
-    <p style={{ fontSize: '13px', margin: '4px 0 0 0' }}>
-      โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค ประจำเดือน {currentDate.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}
-    </p>
-  </div>
+      <div className="print-summary-area panel" style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>
+            สรุปผลการปฏิบัติงานนอกเวลาราชการ
+          </h2>
+          <p style={{ fontSize: '13px', margin: '4px 0 0 0' }}>
+            โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค ประจำเดือน {currentDate.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}
+          </p>
+        </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th style={{ width: '45px' }}>วันที่</th>
-        <th style={{ width: '220px' }}>ชื่อผู้ปฏิบัติงาน</th>
-        <th>ผลการปฏิบัติงาน</th>
-      </tr>
-    </thead>
-    <tbody>
-      {printRows.map(row => (
-        <tr key={row.dayNum}>
-          <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{row.dayNum}</td>
-          <td>
-            {row.staffList.length > 0 ? (
-              row.staffList.map((s, idx) => (
-                <div key={idx} style={{ marginBottom: '2px' }}>
-                  {s.first_name} {s.last_name}
-                </div>
-              ))
-            ) : (
-              <span style={{ color: '#94a3b8' }}>-</span>
-            )}
-          </td>
-          <td>
-            <div>จำนวนผู้รับบริการทั้งหมด .....<b>{row.summary.total_patients || '0'}</b>..... ราย</div>
-            <div style={{ textIndent: '12px' }}>1. ผู้ป่วยเก็บเงินได้ .....<b>{row.summary.cash_collected || '0'}</b>..... ราย</div>
-            <div style={{ textIndent: '12px' }}>2. ผู้ป่วย UC .....<b>{row.summary.uc_count || '0'}</b>..... ราย</div>
-          </td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-</div>
+        <table>
+          <thead>
+            <tr>
+              <th style={{ width: '45px' }}>วันที่</th>
+              <th style={{ width: '220px' }}>ชื่อผู้ปฏิบัติงาน</th>
+              <th>ผลการปฏิบัติงาน</th>
+            </tr>
+          </thead>
+          <tbody>
+            {printRows.map(row => (
+              <tr key={row.dayNum}>
+                <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{row.dayNum}</td>
+                <td>
+                  {row.staffList.length > 0 ? (
+                    row.staffList.map((s, idx) => (
+                      <div key={idx} style={{ marginBottom: '2px' }}>
+                        {s.first_name} {s.last_name}
+                      </div>
+                    ))
+                  ) : (
+                    <span style={{ color: '#94a3b8' }}>-</span>
+                  )}
+                </td>
+                <td>
+                  <div>จำนวนผู้รับบริการทั้งหมด .....<b>{row.summary.total_patients || '0'}</b>..... ราย</div>
+                  <div style={{ textIndent: '12px' }}>1. ผู้ป่วยเก็บเงินได้ .....<b>{row.summary.cash_collected || '0'}</b>..... ราย</div>
+                  <div style={{ textIndent: '12px' }}>2. ผู้ป่วย UC .....<b>{row.summary.uc_count || '0'}</b>..... ราย</div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {/* Modal ป๊อปอัพสำหรับกรอกตัวเลขประจำวัน */}
       {selectedDate && (
