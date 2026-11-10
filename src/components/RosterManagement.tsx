@@ -1,6 +1,6 @@
 // src/components/RosterManagement.tsx
 import React, { useState, useEffect } from 'react';
-import { getActiveStaff, getOrCreateSchedule, getDutyAssignments, saveDutyAssignments } from '../services/rosterService';
+import { getActiveStaff, getOrCreateSchedule, getDutyAssignments, saveDutyAssignments } from '../rosterService';
 import { Calendar, Save, Loader2 } from 'lucide-react';
 
 export const RosterManagement: React.FC = () => {

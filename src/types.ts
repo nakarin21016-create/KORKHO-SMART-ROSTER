@@ -12,4 +12,5 @@ export interface Staff {
   afternoon_rate: number
   status: StaffStatus
   created_at: string
+  display_order?: number
 }

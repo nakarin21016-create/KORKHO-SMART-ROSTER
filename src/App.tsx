@@ -152,6 +152,12 @@ export default function App() {
     if (!supabase) return
     setSaving(true)
     setError('')
+
+    // คำนวณลำดับ: ถ้าแก้ไขคนเดิมให้คงลำดับ display_order ไว้ ถ้าเป็นคนใหม่ให้ต่อท้าย
+    const nextOrder = editing 
+      ? (editing.display_order || 999) 
+      : (staff.length > 0 ? Math.max(...staff.map(s => s.display_order || 0)) + 1 : 1)
+
     const payload = {
       first_name: form.first_name.trim(),
       last_name: form.last_name.trim(),
@@ -160,6 +166,7 @@ export default function App() {
       morning_rate: Number(form.morning_rate),
       afternoon_rate: Number(form.afternoon_rate),
       status: form.status,
+      display_order: nextOrder,
     }
     const result = editing
       ? await supabase.from('staff').update(payload).eq('id', editing.id)
@@ -209,9 +216,15 @@ export default function App() {
     setReorderModalOpen(false)
 
     if (supabase) {
-      for (let i = 0; i < orderedStaffList.length; i++) {
-        await supabase.from('staff').update({ display_order: i + 1 }).eq('id', orderedStaffList[i].id)
+      const updates = orderedStaffList.map((item, index) => ({
+        id: item.id,
+        display_order: index + 1
+      }))
+      const { error: upsertErr } = await supabase.from('staff').upsert(updates, { onConflict: 'id' })
+      if (upsertErr) {
+        setError(upsertErr.message)
       }
+      await loadStaff()
     }
   }
 
