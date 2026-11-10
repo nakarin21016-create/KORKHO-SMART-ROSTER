@@ -2189,14 +2189,12 @@ function RosterCalendarPage({
                   </tr>
                 ) : (
                   activeStaff.map((person, idx) => (
-                    // 🟢 ขยายความสูงแถวเป็น 42px ยืดตารางในแนวตั้งให้โปร่งสวยงาม
                     <tr key={person.id} style={{ height: '42px' }}>
                       <td style={{ border: '1px solid #000', textAlign: 'center', verticalAlign: 'middle' }}>{idx + 1}</td>
-                      {/* 🟢 ใส่ line-height: 1.4 และ vertical-align: middle เพื่อให้สระ/วรรณยุกต์ไม่ชนเส้นขอบ */}
-                      <td style={{ border: '1px solid #000', padding: '6px 14px', fontSize: '12px', whiteSpace: 'nowrap', lineHeight: '1.4', verticalAlign: 'middle' }}>
+                      <td style={{ border: '1px solid #000', padding: '6px 14px', fontSize: '12px', whiteSpace: 'nowrap', lineHeight: '1.45', verticalAlign: 'middle' }}>
                         <b>{person.first_name} {person.last_name}</b>
                       </td>
-                      <td style={{ border: '1px solid #000', padding: '6px 14px', fontSize: '12px', whiteSpace: 'nowrap', lineHeight: '1.4', verticalAlign: 'middle' }}>
+                      <td style={{ border: '1px solid #000', padding: '6px 14px', fontSize: '12px', whiteSpace: 'nowrap', lineHeight: '1.45', verticalAlign: 'middle' }}>
                         {person.position}
                       </td>
 
