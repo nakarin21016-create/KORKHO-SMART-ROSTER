@@ -1,6 +1,5 @@
 // src/services/rosterService.ts
-// ⚠️ แก้ไขพาธตรงนี้ให้ตรงกับไฟล์ supabase ที่คุณมีอยู่จริง (เช่น '../lib/supabase' หรือ '../supabaseClient')
-import { supabase } from '../src/lib/supabase'; 
+import { supabase } from './lib/supabase'; 
 
 export interface DutyAssignmentInput {
   staff_id: string;
@@ -10,6 +9,8 @@ export interface DutyAssignmentInput {
 
 // 1. ดึงเจ้าหน้าที่ทั้งหมดที่สถานะ Active
 export async function getActiveStaff() {
+  if (!supabase) return [];
+
   const { data, error } = await supabase
     .from('staff')
     .select('id, staff_code, first_name, last_name, position, staff_type')
@@ -22,6 +23,8 @@ export async function getActiveStaff() {
 
 // 2. ดึงหรือสร้าง Schedule ของเดือนนั้น
 export async function getOrCreateSchedule(year: number, month: number) {
+  if (!supabase) throw new Error('Supabase client is not initialized');
+
   let { data: schedule, error } = await supabase
     .from('duty_schedules')
     .select('*')
@@ -47,6 +50,8 @@ export async function getOrCreateSchedule(year: number, month: number) {
 
 // 3. ดึงรายการเวรที่จัดไว้แล้ว
 export async function getDutyAssignments(scheduleId: string) {
+  if (!supabase) return [];
+
   const { data, error } = await supabase
     .from('duty_assignments')
     .select('*')
@@ -58,6 +63,8 @@ export async function getDutyAssignments(scheduleId: string) {
 
 // 4. บันทึกตารางเวรใหม่ (Delete ของเดิมแล้ว Insert ชุดใหม่)
 export async function saveDutyAssignments(scheduleId: string, assignments: DutyAssignmentInput[]) {
+  if (!supabase) throw new Error('Supabase client is not initialized');
+
   const { error: deleteError } = await supabase
     .from('duty_assignments')
     .delete()
