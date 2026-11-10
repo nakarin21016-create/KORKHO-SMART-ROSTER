@@ -17,12 +17,23 @@ interface StaffAssignment {
   shift_type: string
 }
 
+interface SignerStaff {
+  id: string
+  first_name: string
+  last_name: string
+  position?: string
+}
+
 export function WorkSummary() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [summaryData, setSummaryData] = useState<Record<string, WorkSummaryRecord>>({})
   const [rosterData, setRosterData] = useState<Record<string, StaffAssignment[]>>({})
   const [loading, setLoading] = useState(false)
   
+  // รายชื่อเจ้าหน้าที่สำหรับเลือกผู้ลงนาม
+  const [staffList, setStaffList] = useState<SignerStaff[]>([])
+  const [selectedSignerId, setSelectedSignerId] = useState<string>('')
+
   // State สำหรับ Modal กรอกตัวเลขประจำวัน
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [form, setForm] = useState({ total_patients: 0, cash_collected: 0, uc_count: 0 })
@@ -36,7 +47,24 @@ export function WorkSummary() {
 
   useEffect(() => {
     void loadMonthlyData()
+    void loadStaffList()
   }, [year, month])
+
+  async function loadStaffList() {
+    if (!supabase) return
+    const { data } = await supabase
+      .from('staff')
+      .select('id, first_name, last_name, position')
+      .order('first_name')
+
+    if (data && data.length > 0) {
+      setStaffList(data)
+      // เลือกคนแรกเป็นค่าเริ่มต้นหากยังไม่ได้เลือก
+      if (!selectedSignerId) {
+        setSelectedSignerId(data[0].id)
+      }
+    }
+  }
 
   async function loadMonthlyData() {
     if (!supabase) return
@@ -140,6 +168,11 @@ export function WorkSummary() {
     return { patients, cash, uc }
   }, [summaryData])
 
+  // ดึงข้อมูลผู้ลงนามที่ถูกเลือก
+  const selectedSigner = useMemo(() => {
+    return staffList.find(s => s.id === selectedSignerId) || null
+  }, [staffList, selectedSignerId])
+
   // เตรียมข้อมูลสำหรับตารางพิมพ์สรุปผลงาน
   const printRows = useMemo(() => {
     const rows = []
@@ -205,6 +238,9 @@ export function WorkSummary() {
             text-align: center !important;
             font-weight: bold !important;
           }
+          .signer-select-box {
+            display: none !important;
+          }
         }
       `}</style>
 
@@ -215,9 +251,27 @@ export function WorkSummary() {
           <h1 className="text-2xl font-bold">สรุปผลการปฏิบัติงานประจำเดือน</h1>
           <p className="text-gray-600">บันทึกยอดผู้รับบริการและค่าบริการรายวันผ่านปฏิทิน</p>
         </div>
-        <button onClick={() => window.print()} className="btn primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Printer size={18} /> พิมพ์รายงานสรุปผล
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* ช่องเลือกผู้ลงนาม */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '13px', fontWeight: '500', color: '#475569' }}>ผู้ลงนาม:</span>
+            <select
+              value={selectedSignerId}
+              onChange={e => setSelectedSignerId(e.target.value)}
+              style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: '#fff', fontSize: '13px' }}
+            >
+              {staffList.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.first_name} {s.last_name} {s.position ? `(${s.position})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button onClick={() => window.print()} className="btn primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Printer size={18} /> พิมพ์รายงานสรุปผล
+          </button>
+        </div>
       </div>
 
       {/* สรุปยอดรวมประจำเดือน Cards */}
@@ -379,6 +433,29 @@ export function WorkSummary() {
             ))}
           </tbody>
         </table>
+
+        {/* ยอดสรุปผู้ป่วยรวมในเดือนนั้นๆ ใต้ตาราง */}
+        <div style={{ marginTop: '16px', padding: '12px 16px', backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '12px', lineHeight: '1.6' }}>
+          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
+            สรุปยอดรวมประจำเดือน {currentDate.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}:
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+            <div>• รวมผู้รับบริการทั้งหมด: <b>{monthlyTotals.patients.toLocaleString()}</b> ราย</div>
+            <div>• รวมผู้ป่วยเก็บเงินได้: <b>{monthlyTotals.cash.toLocaleString()}</b> ราย</div>
+            <div>• รวมผู้ป่วยสิทธิ UC / ประกันสุขภาพ: <b>{monthlyTotals.uc.toLocaleString()}</b> ราย</div>
+          </div>
+        </div>
+
+        {/* ส่วนลงลายมือชื่อผู้ลงนาม 1 ท่าน */}
+        <div style={{ marginTop: '36px', display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ textAlign: 'center', width: '260px', fontSize: '12px', lineHeight: '1.8' }}>
+            <div>ลงชื่อ ................................................................ ผู้รายงาน</div>
+            <div style={{ marginTop: '4px' }}>
+              ({selectedSigner ? `${selectedSigner.first_name} ${selectedSigner.last_name}` : '....................................................'})
+            </div>
+            <div>ตำแหน่ง {selectedSigner?.position || '....................................................'}</div>
+          </div>
+        </div>
       </div>
 
       {/* Modal ป๊อปอัพสำหรับกรอกตัวเลขประจำวัน */}
