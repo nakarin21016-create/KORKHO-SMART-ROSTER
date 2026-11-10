@@ -1525,7 +1525,7 @@ function CompensationPage({ staff }: { staff: Staff[] }) {
 function RosterCalendarPage({
   staff,
   isAdmin,
-  customHolidays,
+  customHolidays = [],
   toggleCustomHoliday
 }: {
   staff: Staff[];
