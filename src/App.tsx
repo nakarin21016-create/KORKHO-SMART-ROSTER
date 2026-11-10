@@ -56,15 +56,6 @@ function arabicToThaiBaht(numbers: number): string {
 }
 
 export default function App() {
-  // 1. ประกาศ State เก็บวันหยุดพิเศษ (มติ ครม.)
-const [customHolidays, setCustomHolidays] = useState<number[]>([])
-
-// 2. ฟังก์ชันสลับการติ๊กเลือกวันหยุด
-function toggleCustomHoliday(day: number) {
-  setCustomHolidays(prev =>
-    prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
-  )
-}
   const [session, setSession] = useState<any>(null)
   const [section, setSection] = useState<Section>('dashboard')
   const [staff, setStaff] = useState<Staff[]>([])
@@ -369,22 +360,10 @@ async function saveReorder() {
           {section === 'dashboard' && <Dashboard staff={staff} onNavigate={setSection}/>}
           {section === 'staff' && <StaffPage staff={filteredStaff} allCount={staff.length} search={search} setSearch={setSearch}
             loading={loading} onAdd={openAdd} onEdit={openEdit} onToggle={toggleStatus} onReorder={openReorderModal} isAdmin={userRole === 'admin'}/>}
-          {section === 'roster' && (
-  <RosterCalendarPage 
-    staff={staff} 
-    isAdmin={userRole === 'admin'} 
-    customHolidays={customHolidays}
-    toggleCustomHoliday={toggleCustomHoliday}
-  />
-)}
+          {section === 'roster' && <RosterCalendarPage staff={staff} isAdmin={userRole === 'admin'} />}
           {section === 'work-summary' && <WorkSummary/>}
           {section === 'compensation' && <CompensationPage staff={staff} />}
-          {section === 'documents' && (
-  <DocumentsPage 
-    staff={staff} 
-    customHolidays={customHolidays} 
-  />
-)}
+          {section === 'documents' && <DocumentsPage staff={staff} />}
           {section === 'settings' && <SettingsPage userEmail={session.user.email} userRole={userRole} staffCount={staff.length} />}
         </div>
       </main>
@@ -631,23 +610,24 @@ const OFFICIAL_HOLIDAYS: Record<string, string> = {
   '2026-12-10': 'วันรัฐธรรมนูญ',
   '2026-12-31': 'วันสิ้นปี',
 }
-function DocumentsPage({ 
-  staff, 
-  customHolidays 
-}: { 
-  staff: Staff[]; 
-  customHolidays: number[] 
-}) {
+function DocumentsPage({ staff }: { staff: Staff[] }) {
   const [year, setYear] = useState<number>(2026)
   const [month, setMonth] = useState<number>(10)
   const [orderNo, setOrderNo] = useState<string>('46/2569')
   const [orderDate, setOrderDate] = useState<string>('29 กันยายน พ.ศ.2569')
 
   const [doubleRateDays, setDoubleRateDays] = useState<number[]>([])
+  const [customHolidays, setCustomHolidays] = useState<number[]>([])
+
+  function toggleCustomHoliday(day: number) {
+    setCustomHolidays(prev =>
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+    )
+  }
 
   const [signers, setSigners] = useState<Signer[]>([
     { id: '1', name: 'นางปิยานาถ เหมือนวาจา', position: 'ผอ.รพ.สต.คอโค', role: 'ผู้ควบคุม' },
-    { id: '2', name: 'นางสาวกชกร หงษ์ศรีจันทร์ วูลเลย์', position: 'นักสาธารณสุขชำนาญการ', role: 'ผู้ตรวจถูกต้อง' },
+    { id: '2', name: 'นางสาวกนกร หงษ์ศรีจันทร์ วูลเลย์', position: 'นักสาธารณสุขชำนาญการ', role: 'ผู้ตรวจถูกต้อง' },
     { id: '3', name: 'นายจรูญ ดวงพร', position: 'สาธารณสุขอำเภอเมืองสุรินทร์', role: 'ผู้อนุมัติให้จ่ายได้' },
     { id: '4', name: 'นางจรรยา วรรณรูปถัมภ์', position: 'จพ.ทันตสาธารณสุขชำนาญงาน', role: 'ผู้จ่ายเงิน' },
   ])
@@ -944,7 +924,33 @@ const daysInMonthList = useMemo(() => {
 
           <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
             ลงวันที่คำสั่ง:{/* แผงปุ่มสำหรับติ๊กเลือกวันหยุดพิเศษ (มติ ครม.) */}
-        
+        <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
+          <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#b45309', display: 'block', marginBottom: '6px' }}>
+            📌 ติ๊กเลือกวันหยุดพิเศษประจำเดือน (มติ ครม. / วันหยุดชดเชยเพิ่มเติม):
+          </label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {daysInMonthList.map(d => (
+              <button
+                key={d.day}
+                type="button"
+                onClick={() => toggleCustomHoliday(d.day)}
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  border: d.isCustomHoliday ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                  backgroundColor: d.isCustomHoliday ? '#fef3c7' : '#ffffff',
+                  color: d.isCustomHoliday ? '#b45309' : '#475569',
+                  fontWeight: d.isCustomHoliday ? 'bold' : 'normal',
+                  cursor: 'pointer',
+                }}
+                title={d.holidayName || `วันที่ ${d.day}`}
+              >
+                {d.day} {d.isOfficialHoliday ? '🔴' : d.isCustomHoliday ? '⭐' : ''}
+              </button>
+            ))}
+          </div>
+        </div>
             <input value={orderDate} onChange={e => setOrderDate(e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} />
           </label>
         </div>
@@ -1060,32 +1066,23 @@ const daysInMonthList = useMemo(() => {
                   <th style={{ border: '1px solid #000', padding: '2px', width: '65px', textAlign: 'center' }} rowSpan={2}>ลายมือชื่อ<br/>ผู้รับเงิน</th>
                 </tr>
                 <tr style={{ backgroundColor: '#f8fafc', height: '16px' }}>
-                  {daysInMonthList.map(d => {
-                    const headerClass = d.isOfficialHoliday
-                      ? 'official-holiday-header'
-                      : d.isCustomHoliday
-                      ? 'custom-holiday-header'
-                      : d.isWeekend
-                      ? 'weekend-header'
-                      : ''
-
-                    return (
-                      <th
-                        key={`hd-${d.day}`}
-                        className={headerClass}
-                        style={{
-                          border: '1px solid #000',
-                          padding: '1px 0',
-                          textAlign: 'center',
-                          width: '17px',
-                          fontSize: '9.5px',
-                        }}
-                        title={d.holidayName}
-                      >
-                        {d.day}
-                      </th>
-                    )
-                  })}
+                  {daysInMonthList.map(d => (
+                    <th 
+                      key={`hd-${d.day}`} 
+                      className={d.isWeekend ? 'weekend-header' : ''}
+                      style={{ 
+                        border: '1px solid #000', 
+                        padding: '1px 0', 
+                        textAlign: 'center', 
+                        width: '17px', 
+                        fontSize: '9.5px',
+                        backgroundColor: d.isWeekend ? '#cbd5e1' : 'transparent',
+                        fontWeight: d.isWeekend ? 'bold' : 'normal'
+                      }}
+                    >
+                      {d.day}
+                    </th>
+                  ))}
                   <th style={{ border: '1px solid #000', padding: '1px', width: '29px', textAlign: 'center', fontSize: '9px' }}>ที่รับเงิน</th>
                   <th style={{ border: '1px solid #000', padding: '1px', width: '29px', textAlign: 'center', fontSize: '9px' }}>ผู้จ่ายเงิน</th>
                 </tr>
@@ -1110,31 +1107,20 @@ const daysInMonthList = useMemo(() => {
 
                       <td style={{ border: '1px solid #000', padding: '1px 3px', fontSize: '9.5px', whiteSpace: 'nowrap' }}>{row.rateLabel}</td>
 
-                      {daysInMonthList.map(d => {
-                    const cellClass = d.isOfficialHoliday
-                      ? 'official-holiday-cell'
-                      : d.isCustomHoliday
-                      ? 'custom-holiday-cell'
-                      : d.isWeekend
-                      ? 'weekend-cell'
-                      : ''
-                    const isActive = row.activeDays.includes(d.day)
-
-                    return (
-                      <td
-                        key={`cell-${d.day}`}
-                        className={cellClass}
-                        style={{
-                          border: '1px solid #000',
-                          textAlign: 'center',
-                          fontSize: '9px',
-                          fontWeight: isActive ? 'bold' : 'normal',
-                        }}
-                      >
-                        {isActive ? '1' : ''}
-                      </td>
-                    )
-                  })}
+                      {daysInMonthList.map(d => (
+                        <td 
+                          key={`c-${idx}-${d.day}`} 
+                          className={d.isWeekend ? 'weekend-cell' : ''}
+                          style={{ 
+                            border: '1px solid #000', 
+                            textAlign: 'center', 
+                            fontSize: '9.5px',
+                            backgroundColor: d.isWeekend ? '#e2e8f0' : 'transparent'
+                          }}
+                        >
+                          {row.activeDays.includes(d.day) ? '/' : ''}
+                        </td>
+                      ))}
 
                       <td style={{ border: '1px solid #000', textAlign: 'center' }}>{row.totalDays}</td>
                       <td style={{ border: '1px solid #000', textAlign: 'right', paddingRight: '3px' }}>
@@ -1522,17 +1508,7 @@ function CompensationPage({ staff }: { staff: Staff[] }) {
   )
 }
 
-function RosterCalendarPage({
-  staff,
-  isAdmin,
-  customHolidays,
-  toggleCustomHoliday
-}: {
-  staff: Staff[];
-  isAdmin: boolean;
-  customHolidays: number[];
-  toggleCustomHoliday: (day: number) => void;
-}) {
+function RosterCalendarPage({ staff, isAdmin }: { staff: Staff[]; isAdmin: boolean }) {
   const [year, setYear] = useState<number>(2026)
   const [month, setMonth] = useState<number>(11)
   const [scheduleId, setScheduleId] = useState<string | null>(null)
@@ -1546,65 +1522,25 @@ function RosterCalendarPage({
   const activeStaff = useMemo(() => staff.filter(s => s.status === 'active'), [staff])
 
   const daysInMonthList = useMemo(() => {
-  const totalDays = new Date(year, month, 0).getDate()
-  const list = []
-  for (let day = 1; day <= totalDays; day++) {
-    const dateObj = new Date(year, month - 1, day)
-    const dayOfWeekIndex = dateObj.getDay()
-    const dayStr = String(day).padStart(2, '0')
-    const monthStr = String(month).padStart(2, '0')
-    const dateStr = `${year}-${monthStr}-${dayStr}`
-    const isSaturday = dayOfWeekIndex === 6
-    const isSunday = dayOfWeekIndex === 0
-
-
-    const isOfficialHoliday = !!OFFICIAL_HOLIDAYS[dateStr]
-    const isCustomHoliday = customHolidays.includes(day) // 👈 ดึง customHolidays มาใช้งานตรงนี้
-    const isWeekend = dayOfWeekIndex === 0 || dayOfWeekIndex === 6
-
-    list.push({
-      day,
-      dateStr,
-      dayOfWeekIndex,
-      dayOfWeekName: WEEKDAYS_SHORT[dayOfWeekIndex],
-      isSaturday,  // 👈 เพิ่มบรรทัดนี้
-      isSunday,    // 👈 เพิ่มบรรทัดนี้
-      isWeekend,
-      isOfficialHoliday,
-      isCustomHoliday,
-      holidayName: OFFICIAL_HOLIDAYS[dateStr] || (isCustomHoliday ? 'วันหยุดพิเศษ (มติ ครม.)' : '')
-    })
-  }
-  {/* แผงระบุวันหยุดพิเศษประจำเดือน */}
-<div className="panel no-print mb-4" style={{ backgroundColor: '#ffffff', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-  <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#b45309', display: 'block', marginBottom: '6px' }}>
-    📌 ระบุวันหยุดพิเศษประจำเดือน (มติ ครม. / วันหยุดชดเชยเพิ่มเติม):
-  </label>
-  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-    {daysInMonthList.map(d => (
-      <button
-        key={d.day}
-        type="button"
-        onClick={() => toggleCustomHoliday(d.day)} // 👈 ดึง toggleCustomHoliday มาใช้งานตรงนี้
-        style={{
-          padding: '3px 8px',
-          borderRadius: '4px',
-          fontSize: '12px',
-          border: d.isCustomHoliday ? '1px solid #f59e0b' : '1px solid #cbd5e1',
-          backgroundColor: d.isCustomHoliday ? '#fef3c7' : '#ffffff',
-          color: d.isCustomHoliday ? '#b45309' : '#475569',
-          fontWeight: d.isCustomHoliday ? 'bold' : 'normal',
-          cursor: 'pointer',
-        }}
-        title={d.holidayName || `วันที่ ${d.day}`}
-      >
-        {d.day} {d.isOfficialHoliday ? '🔴' : d.isCustomHoliday ? '⭐' : ''}
-      </button>
-    ))}
-  </div>
-</div>
-  return list
-}, [year, month, customHolidays]) // 👈 อย่าลืมใส่ customHolidays ใน [ ] ท้าย useMemo
+    const totalDays = new Date(year, month, 0).getDate()
+    const list = []
+    for (let day = 1; day <= totalDays; day++) {
+      const dateObj = new Date(year, month - 1, day)
+      const dayOfWeekIndex = dateObj.getDay()
+      const dayStr = String(day).padStart(2, '0')
+      const monthStr = String(month).padStart(2, '0')
+      const dateStr = `${year}-${monthStr}-${dayStr}`
+      list.push({
+        day,
+        dateStr,
+        dayOfWeekIndex,
+        dayOfWeekName: WEEKDAYS_SHORT[dayOfWeekIndex],
+        isSunday: dayOfWeekIndex === 0,
+        isSaturday: dayOfWeekIndex === 6,
+      })
+    }
+    return list
+  }, [year, month])
 
   const calendarWeeks = useMemo(() => {
     const firstDayIndex = new Date(year, month - 1, 1).getDay()
