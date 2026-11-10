@@ -59,7 +59,6 @@ export function WorkSummary() {
 
     if (data && data.length > 0) {
       setStaffList(data)
-      // เลือกคนแรกเป็นค่าเริ่มต้นหากยังไม่ได้เลือก
       if (!selectedSignerId) {
         setSelectedSignerId(data[0].id)
       }
@@ -237,9 +236,6 @@ export function WorkSummary() {
             background-color: #f1f5f9 !important;
             text-align: center !important;
             font-weight: bold !important;
-          }
-          .signer-select-box {
-            display: none !important;
           }
         }
       `}</style>
@@ -446,10 +442,10 @@ export function WorkSummary() {
           </div>
         </div>
 
-        {/* ส่วนลงลายมือชื่อผู้ลงนาม 1 ท่าน */}
+        {/* ส่วนลงลายมือชื่อผู้ลงนาม 1 ท่าน (ขยายความกว้างเพื่อไม่ให้ตกบรรทัด) */}
         <div style={{ marginTop: '36px', display: 'flex', justifyContent: 'flex-end' }}>
-          <div style={{ textAlign: 'center', width: '260px', fontSize: '12px', lineHeight: '1.8' }}>
-            <div>ลงชื่อ ................................................................ ผู้รายงาน</div>
+          <div style={{ textAlign: 'center', width: '300px', fontSize: '12px', lineHeight: '1.8' }}>
+            <div>ลงชื่อ .................................................... ผู้รายงาน</div>
             <div style={{ marginTop: '4px' }}>
               ({selectedSigner ? `${selectedSigner.first_name} ${selectedSigner.last_name}` : '....................................................'})
             </div>
