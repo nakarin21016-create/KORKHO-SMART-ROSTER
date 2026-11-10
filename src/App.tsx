@@ -610,6 +610,7 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
     </>
   )
 }
+
 const OFFICIAL_HOLIDAYS: Record<string, string> = {
   '2026-01-01': 'วันขึ้นปีใหม่',
   '2026-03-03': 'วันมาฆบูชา',
