@@ -2131,8 +2131,9 @@ function RosterCalendarPage({
       ) : (
         <div className="panel table-panel print-area" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '20px', border: '1px solid #e2e8f0' }}>
           <div style={{ textAlign: 'center', marginBottom: '16px', color: '#0f172a' }}>
-            <h2 style={{ fontSize: '17px', fontWeight: 'bold', margin: '0 0 4px 0' }}>
-              ตารางปฏิบัติงานของเจ้าหน้าที่โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค อำเภอเมืองสุรินทร์ เดือน {thaiMonthName} พ.ศ. {thaiYear} ตามคำสั่งสำนักงานสาธารณสุขอำเภอเมืองสุรินทร์ที่ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/{thaiYear} &nbsp;&nbsp;ลงวันที่.........................................
+            {/* 🟢 ย่อฟอนต์เป็น 14px และใส่ whiteSpace: nowrap ให้อยู่ในบรรทัดเดียวกันทั้งหมด */}
+            <h2 style={{ fontSize: '14px', fontWeight: 'bold', margin: '0 0 4px 0', whiteSpace: 'nowrap' }}>
+              ตารางปฏิบัติงานของเจ้าหน้าที่โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค อำเภอเมืองสุรินทร์ เดือน {thaiMonthName} พ.ศ. {thaiYear} ตามคำสั่งสำนักงานสาธารณสุขอำเภอเมืองสุรินทร์ที่ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/{thaiYear} ลงวันที่.........................................
             </h2>
             <p style={{ fontSize: '13.5px', color: '#475569', margin: 0 }}>
               เรื่อง ให้เจ้าหน้าที่ปฏิบัติงานส่งเสริมสุขภาพเชิงรุก ปฏิบัติงานนอกเวลาราชการและวันหยุดราชการ
