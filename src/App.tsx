@@ -212,30 +212,29 @@ export default function App() {
   }
 
 async function saveReorder() {
-  setReorderModalOpen(false)
-  setLoading(true)
+    setStaff(orderedStaffList)
+    setReorderModalOpen(false)
+    setLoading(true)
 
-  if (supabase) {
-    const updates = orderedStaffList.map((item, index) => ({
-      id: item.id,
-      display_order: index + 1
-    }))
-    
-    // บันทึกลำดับใหม่ลง Supabase
-    const { error: upsertErr } = await supabase
-      .from('staff')
-      .upsert(updates, { onConflict: 'id' })
+    if (supabase) {
+      // ดึงข้อมูลเดิมของแต่ละคนมาด้วย เพื่อไม่ให้ติด Not-null constraint ของ Supabase
+      const updates = orderedStaffList.map((item, index) => ({
+        ...item, // 👈 กระจายข้อมูลเดิม (first_name, last_name, ฯลฯ) ไปด้วย
+        display_order: index + 1
+      }))
 
-    if (upsertErr) {
-      setError('ไม่สามารถบันทึกการจัดลำดับได้: ' + upsertErr.message)
-    } else {
-      // โหลดข้อมูลใหม่จาก Supabase ทันที เพื่อให้ filteredStaff อัปเดตตาม
-      await loadStaff()
+      const { error: upsertErr } = await supabase
+        .from('staff')
+        .upsert(updates, { onConflict: 'id' })
+
+      if (upsertErr) {
+        setError('ไม่สามารถบันทึกการจัดลำดับได้: ' + upsertErr.message)
+      } else {
+        await loadStaff() // โหลดข้อมูลใหม่หลังจากบันทึกสำเร็จ
+      }
     }
+    setLoading(false)
   }
-  setLoading(false)
-}
-
   const filteredStaff = useMemo(() => {
     const q = search.toLocaleLowerCase('th')
     return staff.filter((p) =>
