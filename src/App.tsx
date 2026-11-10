@@ -589,7 +589,27 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
     </>
   )
 }
-
+const OFFICIAL_HOLIDAYS: Record<string, string> = {
+  '2026-01-01': 'วันขึ้นปีใหม่',
+  '2026-03-03': 'วันมาฆบูชา',
+  '2026-04-06': 'วันพระบาทสมเด็จพระพุทธยอดฟ้าจุฬาโลกมหาราชฯ',
+  '2026-04-13': 'วันสงกรานต์',
+  '2026-04-14': 'วันสงกรานต์',
+  '2026-04-15': 'วันสงกรานต์',
+  '2026-05-01': 'วันแรงงานแห่งชาติ',
+  '2026-05-04': 'วันฉัตรมงคล',
+  '2026-05-31': 'วันวิสาขบูชา',
+  '2026-06-03': 'วันเฉลิมพระชนมพรรษา สมเด็จพระนางเจ้าฯ พระบรมราชินี',
+  '2026-07-28': 'วันเฉลิมพระชนมพรรษา พระบาทสมเด็จพระเจ้าอยู่หัว',
+  '2026-07-29': 'วันอาสาฬหบูชา',
+  '2026-07-30': 'วันเข้าพรรษา',
+  '2026-08-12': 'วันแม่แห่งชาติ',
+  '2026-10-13': 'วันนวมินทรมหาราช',
+  '2026-10-23': 'วันปิยมหาราช',
+  '2026-12-05': 'วันพ่อแห่งชาติ',
+  '2026-12-10': 'วันรัฐธรรมนูญ',
+  '2026-12-31': 'วันสิ้นปี',
+}
 function DocumentsPage({ staff }: { staff: Staff[] }) {
   const [year, setYear] = useState<number>(2026)
   const [month, setMonth] = useState<number>(10)
@@ -597,6 +617,13 @@ function DocumentsPage({ staff }: { staff: Staff[] }) {
   const [orderDate, setOrderDate] = useState<string>('29 กันยายน พ.ศ.2569')
 
   const [doubleRateDays, setDoubleRateDays] = useState<number[]>([])
+  const [customHolidays, setCustomHolidays] = useState<number[]>([])
+
+  function toggleCustomHoliday(day: number) {
+    setCustomHolidays(prev =>
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+    )
+  }
 
   const [signers, setSigners] = useState<Signer[]>([
     { id: '1', name: 'นางปิยานาถ เหมือนวาจา', position: 'ผอ.รพ.สต.คอโค', role: 'ผู้ควบคุม' },
@@ -622,7 +649,7 @@ function DocumentsPage({ staff }: { staff: Staff[] }) {
 
   const activeStaff = useMemo(() => staff.filter(s => s.status === 'active'), [staff])
 
-  const daysInMonthList = useMemo(() => {
+const daysInMonthList = useMemo(() => {
     const totalDays = new Date(year, month, 0).getDate()
     const list = []
     for (let day = 1; day <= totalDays; day++) {
@@ -631,18 +658,24 @@ function DocumentsPage({ staff }: { staff: Staff[] }) {
       const dayStr = String(day).padStart(2, '0')
       const monthStr = String(month).padStart(2, '0')
       const dateStr = `${year}-${monthStr}-${dayStr}`
+      
+      const isOfficialHoliday = !!OFFICIAL_HOLIDAYS[dateStr]
+      const isCustomHoliday = customHolidays.includes(day)
+      const isWeekend = dayOfWeekIndex === 0 || dayOfWeekIndex === 6
+
       list.push({
         day,
         dateStr,
         dayOfWeekIndex,
         dayOfWeekName: WEEKDAYS_SHORT[dayOfWeekIndex],
-        isSunday: dayOfWeekIndex === 0,
-        isSaturday: dayOfWeekIndex === 6,
-        isWeekend: dayOfWeekIndex === 0 || dayOfWeekIndex === 6,
+        isWeekend,
+        isOfficialHoliday,
+        isCustomHoliday,
+        holidayName: OFFICIAL_HOLIDAYS[dateStr] || (isCustomHoliday ? 'วันหยุดพิเศษ (มติ ครม.)' : ''),
       })
     }
     return list
-  }, [year, month])
+  }, [year, month, customHolidays])
 
   useEffect(() => {
     void loadRosterData()
@@ -890,7 +923,34 @@ function DocumentsPage({ staff }: { staff: Staff[] }) {
           </label>
 
           <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
-            ลงวันที่คำสั่ง:
+            ลงวันที่คำสั่ง:{/* แผงปุ่มสำหรับติ๊กเลือกวันหยุดพิเศษ (มติ ครม.) */}
+        <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #e2e8f0' }}>
+          <label style={{ fontSize: '13px', fontWeight: 'bold', color: '#b45309', display: 'block', marginBottom: '6px' }}>
+            📌 ติ๊กเลือกวันหยุดพิเศษประจำเดือน (มติ ครม. / วันหยุดชดเชยเพิ่มเติม):
+          </label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {daysInMonthList.map(d => (
+              <button
+                key={d.day}
+                type="button"
+                onClick={() => toggleCustomHoliday(d.day)}
+                style={{
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  border: d.isCustomHoliday ? '1px solid #f59e0b' : '1px solid #cbd5e1',
+                  backgroundColor: d.isCustomHoliday ? '#fef3c7' : '#ffffff',
+                  color: d.isCustomHoliday ? '#b45309' : '#475569',
+                  fontWeight: d.isCustomHoliday ? 'bold' : 'normal',
+                  cursor: 'pointer',
+                }}
+                title={d.holidayName || `วันที่ ${d.day}`}
+              >
+                {d.day} {d.isOfficialHoliday ? '🔴' : d.isCustomHoliday ? '⭐' : ''}
+              </button>
+            ))}
+          </div>
+        </div>
             <input value={orderDate} onChange={e => setOrderDate(e.target.value)} style={{ width: '100%', padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px' }} />
           </label>
         </div>
@@ -1006,23 +1066,32 @@ function DocumentsPage({ staff }: { staff: Staff[] }) {
                   <th style={{ border: '1px solid #000', padding: '2px', width: '65px', textAlign: 'center' }} rowSpan={2}>ลายมือชื่อ<br/>ผู้รับเงิน</th>
                 </tr>
                 <tr style={{ backgroundColor: '#f8fafc', height: '16px' }}>
-                  {daysInMonthList.map(d => (
-                    <th 
-                      key={`hd-${d.day}`} 
-                      className={d.isWeekend ? 'weekend-header' : ''}
-                      style={{ 
-                        border: '1px solid #000', 
-                        padding: '1px 0', 
-                        textAlign: 'center', 
-                        width: '17px', 
-                        fontSize: '9.5px',
-                        backgroundColor: d.isWeekend ? '#cbd5e1' : 'transparent',
-                        fontWeight: d.isWeekend ? 'bold' : 'normal'
-                      }}
-                    >
-                      {d.day}
-                    </th>
-                  ))}
+                  {daysInMonthList.map(d => {
+                    const headerClass = d.isOfficialHoliday
+                      ? 'official-holiday-header'
+                      : d.isCustomHoliday
+                      ? 'custom-holiday-header'
+                      : d.isWeekend
+                      ? 'weekend-header'
+                      : ''
+
+                    return (
+                      <th
+                        key={`hd-${d.day}`}
+                        className={headerClass}
+                        style={{
+                          border: '1px solid #000',
+                          padding: '1px 0',
+                          textAlign: 'center',
+                          width: '17px',
+                          fontSize: '9.5px',
+                        }}
+                        title={d.holidayName}
+                      >
+                        {d.day}
+                      </th>
+                    )
+                  })}
                   <th style={{ border: '1px solid #000', padding: '1px', width: '29px', textAlign: 'center', fontSize: '9px' }}>ที่รับเงิน</th>
                   <th style={{ border: '1px solid #000', padding: '1px', width: '29px', textAlign: 'center', fontSize: '9px' }}>ผู้จ่ายเงิน</th>
                 </tr>
@@ -1047,20 +1116,31 @@ function DocumentsPage({ staff }: { staff: Staff[] }) {
 
                       <td style={{ border: '1px solid #000', padding: '1px 3px', fontSize: '9.5px', whiteSpace: 'nowrap' }}>{row.rateLabel}</td>
 
-                      {daysInMonthList.map(d => (
-                        <td 
-                          key={`c-${idx}-${d.day}`} 
-                          className={d.isWeekend ? 'weekend-cell' : ''}
-                          style={{ 
-                            border: '1px solid #000', 
-                            textAlign: 'center', 
-                            fontSize: '9.5px',
-                            backgroundColor: d.isWeekend ? '#e2e8f0' : 'transparent'
-                          }}
-                        >
-                          {row.activeDays.includes(d.day) ? '/' : ''}
-                        </td>
-                      ))}
+                      {daysInMonthList.map(d => {
+                    const cellClass = d.isOfficialHoliday
+                      ? 'official-holiday-cell'
+                      : d.isCustomHoliday
+                      ? 'custom-holiday-cell'
+                      : d.isWeekend
+                      ? 'weekend-cell'
+                      : ''
+                    const isActive = row.activeDays.includes(d.day)
+
+                    return (
+                      <td
+                        key={`cell-${d.day}`}
+                        className={cellClass}
+                        style={{
+                          border: '1px solid #000',
+                          textAlign: 'center',
+                          fontSize: '9px',
+                          fontWeight: isActive ? 'bold' : 'normal',
+                        }}
+                      >
+                        {isActive ? '1' : ''}
+                      </td>
+                    )
+                  })}
 
                       <td style={{ border: '1px solid #000', textAlign: 'center' }}>{row.totalDays}</td>
                       <td style={{ border: '1px solid #000', textAlign: 'right', paddingRight: '3px' }}>
