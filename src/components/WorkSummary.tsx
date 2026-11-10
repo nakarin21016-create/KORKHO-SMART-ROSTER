@@ -336,52 +336,50 @@ export function WorkSummary() {
         )}
       </div>
 
-      {/* ตารางพิมพ์สรุปผลงาน (ตรงตามรูปแบบเอกสารแนบ 100%) */}
-      <div className="print-area panel" style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>
-            สรุปผลการปฏิบัติงานนอกเวลาราชการ
-          </h2>
-          <p style={{ fontSize: '13px', margin: '4px 0 0 0' }}>
-            โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค ประจำเดือน {currentDate.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}
-          </p>
-        </div>
+      {/* ตารางพิมพ์สรุปผลงาน */}
+<div className="print-summary-area panel" style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+  <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+    <h2 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>
+      สรุปผลการปฏิบัติงานนอกเวลาราชการ
+    </h2>
+    <p style={{ fontSize: '13px', margin: '4px 0 0 0' }}>
+      โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค ประจำเดือน {currentDate.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' })}
+    </p>
+  </div>
 
-        <table>
-          <thead>
-            <tr>
-              <th style={{ width: '45px' }}>วันที่</th>
-              <th style={{ width: '220px' }}>ชื่อผู้ปฏิบัติงาน</th>
-              <th>ผลการปฏิบัติงาน</th>
-              <th style={{ width: '120px' }}>ลายมือชื่อ</th>
-            </tr>
-          </thead>
-          <tbody>
-            {printRows.map(row => (
-              <tr key={row.dayNum}>
-                <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{row.dayNum}</td>
-                <td>
-                  {row.staffList.length > 0 ? (
-                    row.staffList.map((s, idx) => (
-                      <div key={idx} style={{ marginBottom: '2px' }}>
-                        {s.first_name} {s.last_name}
-                      </div>
-                    ))
-                  ) : (
-                    <span style={{ color: '#94a3b8' }}>-</span>
-                  )}
-                </td>
-                <td>
-                  <div>จำนวนผู้รับบริการทั้งหมด .....<b>{row.summary.total_patients || '0'}</b>..... ราย</div>
-                  <div style={{ textIndent: '12px' }}>1. ผู้ป่วยเก็บเงินได้ .....<b>{row.summary.cash_collected || '0'}</b>..... ราย</div>
-                  <div style={{ textIndent: '12px' }}>2. ผู้ป่วย UC .....<b>{row.summary.uc_count || '0'}</b>..... ราย</div>
-                </td>
-                <td></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+  <table>
+    <thead>
+      <tr>
+        <th style={{ width: '45px' }}>วันที่</th>
+        <th style={{ width: '220px' }}>ชื่อผู้ปฏิบัติงาน</th>
+        <th>ผลการปฏิบัติงาน</th>
+      </tr>
+    </thead>
+    <tbody>
+      {printRows.map(row => (
+        <tr key={row.dayNum}>
+          <td style={{ textAlign: 'center', fontWeight: 'bold' }}>{row.dayNum}</td>
+          <td>
+            {row.staffList.length > 0 ? (
+              row.staffList.map((s, idx) => (
+                <div key={idx} style={{ marginBottom: '2px' }}>
+                  {s.first_name} {s.last_name}
+                </div>
+              ))
+            ) : (
+              <span style={{ color: '#94a3b8' }}>-</span>
+            )}
+          </td>
+          <td>
+            <div>จำนวนผู้รับบริการทั้งหมด .....<b>{row.summary.total_patients || '0'}</b>..... ราย</div>
+            <div style={{ textIndent: '12px' }}>1. ผู้ป่วยเก็บเงินได้ .....<b>{row.summary.cash_collected || '0'}</b>..... ราย</div>
+            <div style={{ textIndent: '12px' }}>2. ผู้ป่วย UC .....<b>{row.summary.uc_count || '0'}</b>..... ราย</div>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
 
       {/* Modal ป๊อปอัพสำหรับกรอกตัวเลขประจำวัน */}
       {selectedDate && (
