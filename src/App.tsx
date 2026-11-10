@@ -2153,7 +2153,7 @@ function RosterCalendarPage({
                         border: '1px solid #000', 
                         padding: '3px 2px', 
                         textAlign: 'center', 
-                        width: '24px',
+                        width: '26px',
                         backgroundColor: d.isOfficialHoliday ? '#fca5a5' : d.isCustomHoliday ? '#fde68a' : d.isSunday ? '#fca5a5' : d.isSaturday ? '#bae6fd' : '#f1f5f9'
                       }}
                     >
@@ -2189,12 +2189,13 @@ function RosterCalendarPage({
                   </tr>
                 ) : (
                   activeStaff.map((person, idx) => (
-                    <tr key={person.id} style={{ height: '42px' }}>
+                    // 🟢 ขยายความสูงแถวเป็น 44px
+                    <tr key={person.id} style={{ height: '44px' }}>
                       <td style={{ border: '1px solid #000', textAlign: 'center', verticalAlign: 'middle' }}>{idx + 1}</td>
-                      <td style={{ border: '1px solid #000', padding: '6px 14px', fontSize: '12px', whiteSpace: 'nowrap', lineHeight: '1.45', verticalAlign: 'middle' }}>
+                      <td style={{ border: '1px solid #000', padding: '6px 14px', fontSize: '12px', whiteSpace: 'nowrap', lineHeight: '1.6', verticalAlign: 'middle' }}>
                         <b>{person.first_name} {person.last_name}</b>
                       </td>
-                      <td style={{ border: '1px solid #000', padding: '6px 14px', fontSize: '12px', whiteSpace: 'nowrap', lineHeight: '1.45', verticalAlign: 'middle' }}>
+                      <td style={{ border: '1px solid #000', padding: '6px 14px', fontSize: '12px', whiteSpace: 'nowrap', lineHeight: '1.6', verticalAlign: 'middle' }}>
                         {person.position}
                       </td>
 
@@ -2228,9 +2229,11 @@ function RosterCalendarPage({
                               border: '1px solid #000', 
                               textAlign: 'center', 
                               fontWeight: 'bold',
-                              fontSize: '12px',
+                              fontSize: '11px',
+                              whiteSpace: 'nowrap', /* 🟢 ห้ามขึ้นบรรทัดใหม่เด็ดขาด */
                               backgroundColor: cellBg,
                               color: textColor,
+                              lineHeight: '1.6',
                               verticalAlign: 'middle'
                             }}
                           >
