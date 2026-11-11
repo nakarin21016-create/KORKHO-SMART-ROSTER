@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 
-// 1. ปรับปรุง Interface Staff ให้ทุกฟิลด์เป็น Optional เพื่อแก้ปัญหา Type Error จาก App.tsx
 export interface Staff {
   id?: string | number;
   name?: string;
@@ -8,7 +7,7 @@ export interface Staff {
   prefix?: string;
   firstName?: string;
   lastName?: string;
-  [key: string]: any; // รองรับฟิลด์เพิ่มเติมอื่นๆ
+  [key: string]: any;
 }
 
 interface PatientData {
@@ -50,7 +49,6 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     symptoms: ''
   });
 
-  // เมื่อเลือกผู้ลงนามใน Dropdown ให้ auto-fill ชื่อและตำแหน่ง
   const handleStaffChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setSelectedStaffId(value);
@@ -106,46 +104,86 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-4xl mx-auto font-sans">
-      {/* 🛠️ แผงควบคุมและค้นหาข้อมูล (ซ่อนเมื่อกดพิมพ์) */}
-      <div className="print:hidden bg-white p-6 rounded-xl shadow-lg border border-slate-200 mb-8 space-y-5">
-        <div className="border-b border-slate-100 pb-3">
-          <h2 className="text-xl font-bold text-slate-800">ระบบออกหนังสือรับรอง (รพ.สต.คอโค)</h2>
-          <p className="text-xs text-slate-500 mt-1">ค้นหาข้อมูลผู้ป่วยจาก HOSxP และเลือกผู้ลงนามเพื่อพิมพ์เอกสาร</p>
+    <div style={{ maxWidth: '850px', margin: '0 auto', padding: '20px', fontFamily: 'Sarabun, Tahoma, sans-serif' }}>
+      
+      {/* 🛠️ แผงควบคุม (ซ่อนเมื่อกดพิมพ์) */}
+      <div className="no-print" style={{
+        backgroundColor: '#ffffff',
+        padding: '24px',
+        borderRadius: '12px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+        border: '1px solid #e2e8f0',
+        marginBottom: '30px'
+      }}>
+        <div style={{ borderBottom: '1px solid #edf2f7', paddingBottom: '12px', marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 4px 0', color: '#1e293b' }}>
+            ระบบออกหนังสือรับรอง (รพ.สต.คอโค)
+          </h2>
+          <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
+            ค้นหาข้อมูลผู้ป่วยจาก HOSxP และเลือกผู้ลงนามเพื่อพิมพ์เอกสาร
+          </p>
         </div>
 
-        {/* ค้นหา CID */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        {/* ช่องค้นหา CID */}
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
           <input
             type="text"
             placeholder="กรอก CID 13 หลักผู้ป่วย"
             value={cidInput}
             onChange={(e) => setCidInput(e.target.value)}
-            className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
             maxLength={13}
+            style={{
+              flex: 1,
+              padding: '10px 14px',
+              border: '1px solid #cbd5e1',
+              borderRadius: '8px',
+              fontSize: '14px',
+              outline: 'none',
+              backgroundColor: '#f8fafc'
+            }}
           />
           <button
             onClick={handleFetchData}
             disabled={loading}
-            className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 transition shadow-sm"
+            style={{
+              backgroundColor: '#2563eb',
+              color: '#ffffff',
+              padding: '10px 20px',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              opacity: loading ? 0.7 : 1
+            }}
           >
             {loading ? 'กำลังดึงข้อมูล...' : '🔍 ค้นหาข้อมูล HOSxP'}
           </button>
         </div>
 
-        {error && <p className="text-red-500 text-xs bg-red-50 p-2.5 rounded-md border border-red-200">{error}</p>}
+        {error && (
+          <div style={{ backgroundColor: '#fef2f2', color: '#dc2626', padding: '10px', borderRadius: '6px', fontSize: '13px', marginBottom: '16px', border: '1px solid #fecaca' }}>
+            {error}
+          </div>
+        )}
 
-        {/* ฟอร์มเลือกผู้ลงนามและตั้งค่าเอกสาร */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-          {/* Dropdown เลือกบุคลากร */}
-          <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+        {/* ฟอร์มตั้งค่าเอกสาร */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
+          <div style={{ gridColumn: 'span 2' }}>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>
               👤 เลือกผู้ตรวจ/ผู้ลงนาม (จากข้อมูลบุคลากร)
             </label>
             <select
               value={selectedStaffId}
               onChange={handleStaffChange}
-              className="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              style={{
+                width: '100%',
+                padding: '9px 12px',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                fontSize: '14px',
+                backgroundColor: '#ffffff'
+              }}
             >
               <option value="">-- กรุณาเลือกผู้ลงนาม --</option>
               {staff.map((s, index) => {
@@ -161,143 +199,182 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">เลขที่หนังสือ (เล่มที่/เลขที่)</label>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>
+              เลขที่หนังสือ (เล่มที่/เลขที่)
+            </label>
             <input
               type="text"
               value={docNumber}
               onChange={(e) => setDocNumber(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm"
+              style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">ตำแหน่งผู้ตรวจ</label>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>
+              ตำแหน่งผู้ตรวจ
+            </label>
             <input
               type="text"
               value={officerPosition}
               onChange={(e) => setOfficerPosition(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm"
+              style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">ชื่อ-สกุล ผู้ลงนาม (แก้ไขเพิ่มเติมได้)</label>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>
+              ชื่อ-สกุล ผู้ลงนาม (แก้ไขเพิ่มเติมได้)
+            </label>
             <input
               type="text"
               value={officerName}
               placeholder="ระบุชื่อผู้ตรวจ"
               onChange={(e) => setOfficerName(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm"
+              style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">วันที่ออกเอกสาร</label>
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>
+              วันที่ออกเอกสาร
+            </label>
             <input
               type="text"
               value={certDate}
               onChange={(e) => setCertDate(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm"
+              style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}
             />
           </div>
         </div>
 
-        <div className="pt-3 border-t border-slate-100 flex justify-end">
+        <div style={{ marginTop: '20px', paddingTop: '12px', borderTop: '1px solid #edf2f7', textAlign: 'right' }}>
           <button
             onClick={handlePrint}
-            className="bg-emerald-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-700 active:bg-emerald-800 transition shadow-md flex items-center gap-2"
+            style={{
+              backgroundColor: '#059669',
+              color: '#ffffff',
+              padding: '10px 24px',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              cursor: 'pointer'
+            }}
           >
             🖨️ พิมพ์หนังสือรับรอง
           </button>
         </div>
       </div>
 
-      {/* 📄 เอกสารหนังสือรับรอง (แสดงผลตามแบบฟอร์มทางราชการ) */}
-      <div id="print-area" className="bg-white p-10 md:p-14 text-slate-900 leading-relaxed font-serif text-[17px] shadow-sm rounded-md">
+      {/* 📄 ตัวเอกสารหนังสือรับรองทางการ */}
+      <div id="print-area" style={{
+        backgroundColor: '#ffffff',
+        padding: '50px 60px',
+        color: '#000000',
+        lineHeight: '2.2',
+        fontSize: '18px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+        borderRadius: '6px'
+      }}>
         
-        {/* ตราครุฑ SVG (ไม่พึ่งพารูปภาพภายนอก หมดปัญหาภาพไม่ขึ้น) */}
-        <div className="flex justify-center mb-3">
-          <svg className="w-24 h-24" viewBox="0 0 200 200" fill="currentColor">
-            <path d="M100 15c-3 0-6 2-7 5l-4 12c-8-2-16-1-23 2l-10-8-5 5 5 11c-6 5-10 12-11 20l-12-1-2 7 11 5c-2 8 0 16 4 23l-11 8 4 6 12-4c3 7 9 13 16 16l-6 11 6 4 9-9c8 4 17 5 26 3l1 13 7 1-1-14c9 1 18 0 26-3l9 9 6-4-6-11c7-3 13-9 16-16l12 4 4-6-11-8c4-7 6-15 4-23l11-5-2-7-12 1c-1-8-5-15-11-20l5-11-5-5-10 8c-7-3-15-4-23-2l-4-12c-1-3-4-5-7-5zm0 25c14 0 25 11 25 25s-11 25-25 25-25-11-25-25 11-25 25-25z"/>
-          </svg>
+        {/* ตราครุฑ */}
+        <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+          <img
+            src="https://upload.wikimedia.org/wikipedia/commons/c/c5/Garuda_Emb_of_Thailand.svg"
+            alt="ตราครุฑ"
+            style={{ width: '100px', height: '100px', objectFit: 'contain' }}
+          />
         </div>
 
-        <div className="text-center font-bold text-xl mb-6 tracking-wide">
+        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '22px', marginBottom: '24px' }}>
           หนังสือรับรอง
         </div>
 
-        {/* ที่ / สถานที่ */}
-        <div className="flex justify-between items-start mb-8 text-[16px]">
-          <div className="w-1/2 pt-1">
+        {/* เลขที่ & ชื่อสถานที่ */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', fontSize: '17px' }}>
+          <div style={{ width: '50%' }}>
             ที่ {docNumber}
           </div>
-          <div className="w-1/2 text-left pl-6 leading-normal">
-            <p className="font-semibold">โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค</p>
-            <p>อำเภอเมืองสุรินทร์ จังหวัดสุรินทร์</p>
+          <div style={{ width: '50%', textAlign: 'left', paddingLeft: '20px', lineHeight: '1.4' }}>
+            <p style={{ margin: 0, fontWeight: 'bold' }}>โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค</p>
+            <p style={{ margin: 0 }}>อำเภอเมืองสุรินทร์ จังหวัดสุรินทร์</p>
           </div>
         </div>
 
-        {/* เนื้อหาข้อความ */}
-        <div className="space-y-3.5 text-justify leading-loose">
-          <div className="flex items-baseline">
-            <span className="w-20 text-right pr-2">ข้าพเจ้า</span>
-            <span className="flex-1 border-b border-dotted border-slate-700 px-2 text-center font-medium">{officerName || '...........................................................................'}</span>
-            <span className="px-2">ตำแหน่ง</span>
-            <span className="flex-1 border-b border-dotted border-slate-700 px-2 text-center font-medium">{officerPosition}</span>
+        {/* ข้อความเนื้อหา */}
+        <div style={{ textAlign: 'justify' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline' }}>
+            <span style={{ minWidth: '70px', textAlign: 'right', paddingRight: '8px' }}>ข้าพเจ้า</span>
+            <span style={{ flex: 1, borderBottom: '1px dotted #000', textAlign: 'center', padding: '0 8px' }}>
+              {officerName || '...........................................................................'}
+            </span>
+            <span style={{ padding: '0 8px' }}>ตำแหน่ง</span>
+            <span style={{ flex: 1, borderBottom: '1px dotted #000', textAlign: 'center', padding: '0 8px' }}>
+              {officerPosition}
+            </span>
           </div>
 
-          <p className="indent-12">
+          <p style={{ textIndent: '3em', margin: '8px 0' }}>
             ประจำโรงพยาบาลส่งเสริมสุขภาพตำบลคอโค อำเภอเมืองสุรินทร์ จังหวัดสุรินทร์ ขอรับรองว่าได้ตรวจรักษา
           </p>
 
-          <div className="flex items-baseline">
+          <div style={{ display: 'flex', alignItems: 'baseline' }}>
             <span>ผู้ป่วยชื่อ</span>
-            <span className="flex-1 border-b border-dotted border-slate-700 px-2 text-center font-medium">{patient.patient_name || '....................................................................................................'}</span>
-            <span className="px-2">อายุ</span>
-            <span className="w-20 border-b border-dotted border-slate-700 px-2 text-center font-medium">{patient.age || '...........'}</span>
+            <span style={{ flex: 1, borderBottom: '1px dotted #000', textAlign: 'center', padding: '0 8px' }}>
+              {patient.patient_name || '....................................................................................................'}
+            </span>
+            <span style={{ padding: '0 8px' }}>อายุ</span>
+            <span style={{ width: '80px', borderBottom: '1px dotted #000', textAlign: 'center', padding: '0 8px' }}>
+              {patient.age || '...........'}
+            </span>
             <span>ปี</span>
           </div>
 
-          <div className="flex items-baseline">
+          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '8px' }}>
             <span>ที่อยู่</span>
-            <span className="flex-1 border-b border-dotted border-slate-700 px-2 text-center font-medium">
+            <span style={{ flex: 1, borderBottom: '1px dotted #000', textAlign: 'center', padding: '0 8px' }}>
               {patient.address || 'บ้านเลขที่...........หมู่ที่...........ตำบล..............................อำเภอ..............................จังหวัดสุรินทร์'}
             </span>
           </div>
 
-          <div className="flex items-baseline">
-            <span className="whitespace-nowrap">ได้มาตรวจและรับการรักษาด้วยอาการ</span>
-            <span className="flex-1 border-b border-dotted border-slate-700 px-2 text-center font-medium">{patient.symptoms || '....................................................................................................'}</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '8px' }}>
+            <span style={{ whiteSpace: 'nowrap' }}>ได้มาตรวจและรับการรักษาด้วยอาการ</span>
+            <span style={{ flex: 1, borderBottom: '1px dotted #000', textAlign: 'center', padding: '0 8px' }}>
+              {patient.symptoms || '....................................................................................................'}
+            </span>
           </div>
 
-          <div className="flex items-baseline">
+          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '8px' }}>
             <span>เมื่อวันที่</span>
-            <span className="w-72 border-b border-dotted border-slate-700 px-2 text-center font-medium">{patient.vstdate || '....................................................'}</span>
+            <span style={{ width: '300px', borderBottom: '1px dotted #000', textAlign: 'center', padding: '0 8px' }}>
+              {patient.vstdate || '....................................................'}
+            </span>
           </div>
 
-          <div className="pt-6 text-center">
+          <div style={{ textAlign: 'center', marginTop: '24px' }}>
             จึงรับรองไว้เป็นหลักฐาน ให้ไว้ ณ วันที่ {certDate}
           </div>
         </div>
 
-        {/* จุดลงชื่อ */}
-        <div className="mt-14 flex justify-end pr-10">
-          <div className="text-center space-y-3 min-w-[260px]">
-            <p>ลงชื่อ ...........................................................................</p>
-            <p>( {officerName || '...........................................................................'} )</p>
-            <p>ตำแหน่ง {officerPosition}</p>
+        {/* จุดลงนาม */}
+        <div style={{ marginTop: '50px', display: 'flex', justifyContent: 'flex-end', paddingRight: '40px' }}>
+          <div style={{ textAlign: 'center', lineHeight: '2' }}>
+            <p style={{ margin: 0 }}>ลงชื่อ ...........................................................................</p>
+            <p style={{ margin: 0 }}>( {officerName || '...........................................................................'} )</p>
+            <p style={{ margin: 0 }}>ตำแหน่ง {officerPosition}</p>
           </div>
         </div>
 
       </div>
 
-      {/* สไตล์การพิมพ์ A4 */}
+      {/* สไตล์สำหรับการพิมพ์ A4 */}
       <style>{`
         @media print {
           body {
             background-color: white !important;
           }
-          .print\\:hidden {
+          .no-print {
             display: none !important;
           }
           #print-area {
