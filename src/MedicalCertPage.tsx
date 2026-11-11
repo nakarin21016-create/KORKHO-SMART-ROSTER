@@ -29,7 +29,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // ฟิลด์ข้อมูลใบรับรอง
+  // ฟิลด์ข้อมูลใบรับรองและผู้ลงนาม
   const [docNumber, setDocNumber] = useState('....../..........');
   const [selectedStaffId, setSelectedStaffId] = useState<string>('');
   const [officerName, setOfficerName] = useState('');
@@ -38,7 +38,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
   );
 
-  // ข้อมูลผู้ป่วย
+  // ข้อมูลผู้ป่วย + อาการเจ็บป่วย/ความเห็นผู้ตรวจ
   const [patient, setPatient] = useState<PatientData>({
     hn: '',
     cid: '',
@@ -46,9 +46,10 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     age: '',
     address: '',
     vstdate: '',
-    symptoms: ''
+    symptoms: 'ตรวจสุขภาพทั่วไป'
   });
 
+  // เปลี่ยนผู้ลงนามใน Dropdown
   const handleStaffChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setSelectedStaffId(value);
@@ -64,6 +65,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     }
   };
 
+  // ดึงข้อมูลจาก HOSxP API Bridge
   const handleFetchData = async () => {
     if (!cidInput || cidInput.length !== 13) {
       setError('กรุณากรอกเลขบัตรประชาชน 13 หลักให้ถูกต้อง');
@@ -89,7 +91,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         address: data.address || '',
         vstdate: data.vstdate
           ? new Date(data.vstdate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
-          : '',
+          : new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
         symptoms: data.symptoms || 'ตรวจสุขภาพทั่วไป'
       });
     } catch (err: any) {
@@ -106,7 +108,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
   return (
     <div style={{ maxWidth: '850px', margin: '0 auto', padding: '20px', fontFamily: 'Sarabun, Tahoma, sans-serif' }}>
       
-      {/* 🛠️ แผงควบคุม (ซ่อนเมื่อกดพิมพ์) */}
+      {/* 🛠️ แผงควบคุม (ซ่อนเมื่อสั่งพิมพ์) */}
       <div className="no-print" style={{
         backgroundColor: '#ffffff',
         padding: '24px',
@@ -120,11 +122,11 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
             ระบบออกหนังสือรับรอง (รพ.สต.คอโค)
           </h2>
           <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
-            ค้นหาข้อมูลผู้ป่วยจาก HOSxP และเลือกผู้ลงนามเพื่อพิมพ์เอกสาร
+            ดึงข้อมูล HOSxP &gt; ระบุอาการเจ็บป่วย/ความเห็น &gt; เลือกผู้ลงนาม
           </p>
         </div>
 
-        {/* ช่องค้นหา CID */}
+        {/* Step 1: ค้นหา CID */}
         <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
           <input
             type="text"
@@ -167,7 +169,29 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
           </div>
         )}
 
-        {/* ฟอร์มตั้งค่าเอกสาร */}
+        {/* Step 2: กรอกอาการเจ็บป่วย / ความเห็นผู้ตรวจ */}
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>
+            🩺 อาการเจ็บป่วย / ผลการตรวจ / ความเห็นผู้ตรวจ (แก้ไขเพิ่มเติมได้)
+          </label>
+          <textarea
+            rows={2}
+            value={patient.symptoms}
+            onChange={(e) => setPatient({ ...patient, symptoms: e.target.value })}
+            placeholder="เช่น ตรวจสุขภาพทั่วไป ไม่พบสิ่งผิดปกติ / มีอาการไข้ ปวดศีรษะ"
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              border: '1px solid #cbd5e1',
+              borderRadius: '8px',
+              fontSize: '14px',
+              boxSizing: 'border-box',
+              resize: 'vertical'
+            }}
+          />
+        </div>
+
+        {/* Step 3: ตั้งค่าเลขที่และเลือกผู้ลงนาม */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
           <div style={{ gridColumn: 'span 2' }}>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>
