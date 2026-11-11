@@ -3,10 +3,18 @@ import React, { useState } from 'react';
 export interface Staff {
   id?: string | number;
   name?: string;
-  position?: string;
+  fullname?: string;
   prefix?: string;
+  pname?: string;
   firstName?: string;
+  fname?: string;
+  first_name?: string;
   lastName?: string;
+  lname?: string;
+  last_name?: string;
+  position?: string;
+  pos_name?: string;
+  role?: string;
   [key: string]: any;
 }
 
@@ -49,6 +57,19 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     symptoms: 'ตรวจสุขภาพทั่วไป'
   });
 
+  // 🛠️ ฟังก์ชันดึงชื่อ-สกุลบุคลากรให้ครอบคลุมทุกโครงสร้างฟิลด์
+  const getStaffFullName = (s: Staff) => {
+    if (s.name && s.name.trim() !== '') return s.name;
+    if (s.fullname && s.fullname.trim() !== '') return s.fullname;
+    
+    const prefix = s.prefix || s.pname || '';
+    const firstName = s.firstName || s.fname || s.first_name || '';
+    const lastName = s.lastName || s.lname || s.last_name || '';
+    
+    const full = `${prefix}${firstName} ${lastName}`.trim();
+    return full || 'ไม่ระบุชื่อ';
+  };
+
   // 🖊️ ระบบเลือกผู้ลงนาม (ดึงทั้งชื่อและตำแหน่งเข้าฟิลด์อัตโนมัติ)
   const handleStaffChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
@@ -62,17 +83,13 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
 
     const found = staff.find((s, index) => String(s.id ?? index) === value);
     if (found) {
-      // ดึงชื่อผู้ลงนาม
-      const fullName = found.name 
-        ? found.name 
-        : `${found.prefix || ''}${found.firstName || ''} ${found.lastName || ''}`.trim();
-      
+      // 1. ดึงชื่อผู้ลงนาม
+      const fullName = getStaffFullName(found);
       setOfficerName(fullName);
 
-      // ดึงตำแหน่งผู้ลงนาม
-      if (found.position && found.position.trim() !== '') {
-        setOfficerPosition(found.position.trim());
-      }
+      // 2. ดึงตำแหน่งผู้ลงนาม
+      const pos = found.position || found.pos_name || found.role || 'พยาบาลวิชาชีพชำนาญการ';
+      setOfficerPosition(pos);
     }
   };
 
@@ -270,8 +287,10 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
               <option value="">-- กรุณาเลือกผู้ลงนาม --</option>
               {staff.map((s, index) => {
                 const idVal = String(s.id ?? index);
-                const displayName = s.name || `${s.prefix || ''}${s.firstName || ''} ${s.lastName || ''}`.trim();
-                const posText = s.position ? ` (${s.position})` : '';
+                const displayName = getStaffFullName(s);
+                const pos = s.position || s.pos_name;
+                const posText = pos ? ` (${pos})` : '';
+                
                 return (
                   <option key={idVal} value={idVal}>
                     {displayName}{posText}
