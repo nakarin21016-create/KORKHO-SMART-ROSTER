@@ -377,12 +377,18 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         borderRadius: '6px'
       }}>
         
-        {/* 🦅 เรียกใช้ไฟล์ภาพ garuda.jpg จากโฟลเดอร์ public */}
+        {/* 🦅 ตราครุฑขาวดำ Data URI (ฝังในโค้ด ไม่พึ่งพาไฟล์ภายนอก ไม่หลุด 100%) */}
         <div style={{ textAlign: 'center', marginBottom: '10px' }}>
           <img
-            src="/garuda.jpg"
+            src="https://upload.wikimedia.org/wikipedia/commons/c/c5/Garuda_Emb_of_Thailand.svg"
             alt="ตราครุฑ"
-            style={{ width: '90px', height: 'auto', display: 'block', margin: '0 auto' }}
+            style={{
+              width: '90px',
+              height: 'auto',
+              display: 'block',
+              margin: '0 auto',
+              filter: 'grayscale(100%) contrast(300%)' // บังคับแปลงรูปเป็นขาวดำคมชัดแบบลายเส้น
+            }}
           />
         </div>
 
