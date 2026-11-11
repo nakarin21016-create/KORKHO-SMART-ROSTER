@@ -15,7 +15,6 @@ export interface Staff {
   position?: string;
   pos_name?: string;
   role?: string;
-  [key: string]: any;
 }
 
 interface PatientData {
@@ -70,7 +69,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     return full || 'ไม่ระบุชื่อ';
   };
 
-  // 🖊️ ระบบเลือกผู้ลงนาม (ดึงทั้งชื่อและตำแหน่งเข้าฟิลด์อัตโนมัติ)
+  // 🖊️ ระบบเลือกผู้ลงนาม
   const handleStaffChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setSelectedStaffId(value);
@@ -83,11 +82,9 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
 
     const found = staff.find((s, index) => String(s.id ?? index) === value);
     if (found) {
-      // 1. ดึงชื่อผู้ลงนาม
       const fullName = getStaffFullName(found);
       setOfficerName(fullName);
 
-      // 2. ดึงตำแหน่งผู้ลงนาม
       const pos = found.position || found.pos_name || found.role || 'พยาบาลวิชาชีพชำนาญการ';
       setOfficerPosition(pos);
     }
@@ -380,15 +377,12 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         borderRadius: '6px'
       }}>
         
-        {/* ตราครุฑ (ใช้ PNG เสถียรสูง พร้อม fallback) */}
+        {/* ตราครุฑทางการ (ใช้ Wikimedia SVG CDN แสดงผลได้แน่นอนทุกเบราว์เซอร์) */}
         <div style={{ textAlign: 'center', marginBottom: '10px' }}>
           <img
-            src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Garuda_Emb_of_Thailand.svg/300px-Garuda_Emb_of_Thailand.svg.png"
+            src="https://upload.wikimedia.org/wikipedia/commons/c/c5/Garuda_Emb_of_Thailand.svg"
             alt="ตราครุฑ"
-            onError={(e) => {
-              // กรณีลิงก์หลักโดนบล็อก ให้เปลี่ยนไปใช้ลิงก์สำรองทันที
-              (e.target as HTMLImageElement).src = "https://raw.githubusercontent.com/tesseract-ocr/tessdata/main/script/Thai.png";
-            }}
+            crossOrigin="anonymous"
             style={{ width: '85px', height: 'auto', display: 'block', margin: '0 auto' }}
           />
         </div>
@@ -474,7 +468,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
 
       </div>
 
-      {/* 🖨️ สไตล์สำหรับการพิมพ์กระดาษ A4 (ลบสีพื้นหลังสีเทาออก 100%) */}
+      {/* 🖨️ สไตล์สำหรับการพิมพ์กระดาษ A4 */}
       <style>{`
         @media print {
           html, body, #root, main, .app-container {
