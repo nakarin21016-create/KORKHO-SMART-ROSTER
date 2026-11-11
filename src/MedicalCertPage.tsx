@@ -38,7 +38,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
   );
 
-  // ข้อมูลผู้ป่วย + อาการเจ็บป่วย/ความเห็นผู้ตรวจ
+  // ข้อมูลผู้ป่วย
   const [patient, setPatient] = useState<PatientData>({
     hn: '',
     cid: '',
@@ -49,7 +49,6 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     symptoms: 'ตรวจสุขภาพทั่วไป'
   });
 
-  // เปลี่ยนผู้ลงนามใน Dropdown
   const handleStaffChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setSelectedStaffId(value);
@@ -65,7 +64,6 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     }
   };
 
-  // ดึงข้อมูลจาก HOSxP API Bridge
   const handleFetchData = async () => {
     if (!cidInput || cidInput.length !== 13) {
       setError('กรุณากรอกเลขบัตรประชาชน 13 หลักให้ถูกต้อง');
@@ -122,11 +120,11 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
             ระบบออกหนังสือรับรอง (รพ.สต.คอโค)
           </h2>
           <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
-            ดึงข้อมูล HOSxP &gt; ระบุอาการเจ็บป่วย/ความเห็น &gt; เลือกผู้ลงนาม
+            ดึงข้อมูล HOSxP &gt; ตรวจสอบ/แก้ไขข้อมูลผู้ป่วย &gt; เลือกผู้ลงนามเพื่อพิมพ์
           </p>
         </div>
 
-        {/* Step 1: ค้นหา CID */}
+        {/* 1. ช่องค้นหา CID */}
         <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
           <input
             type="text"
@@ -169,33 +167,81 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
           </div>
         )}
 
-        {/* Step 2: กรอกอาการเจ็บป่วย / ความเห็นผู้ตรวจ */}
-        <div style={{ marginBottom: '16px' }}>
-          <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>
-            🩺 อาการเจ็บป่วย / ผลการตรวจ / ความเห็นผู้ตรวจ (แก้ไขเพิ่มเติมได้)
-          </label>
-          <textarea
-            rows={2}
-            value={patient.symptoms}
-            onChange={(e) => setPatient({ ...patient, symptoms: e.target.value })}
-            placeholder="เช่น ตรวจสุขภาพทั่วไป ไม่พบสิ่งผิดปกติ / มีอาการไข้ ปวดศีรษะ"
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              border: '1px solid #cbd5e1',
-              borderRadius: '8px',
-              fontSize: '14px',
-              boxSizing: 'border-box',
-              resize: 'vertical'
-            }}
-          />
+        {/* 2. ส่วนข้อมูลผู้ป่วย (ดึงจาก HOSxP และแก้ไขเพิ่มเติมได้) */}
+        <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
+          <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#334155', marginBottom: '10px' }}>
+            👤 ข้อมูลผู้ป่วย (ดึงอัตโนมัติ / แก้ไขเพิ่มเติมได้)
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 2fr', gap: '10px', marginBottom: '10px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '3px' }}>ชื่อ-สกุล ผู้ป่วย</label>
+              <input
+                type="text"
+                value={patient.patient_name}
+                onChange={(e) => setPatient({ ...patient, patient_name: e.target.value })}
+                placeholder="ชื่อ-นามสกุลผู้ป่วย"
+                style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '3px' }}>อายุ (ปี)</label>
+              <input
+                type="text"
+                value={patient.age}
+                onChange={(e) => setPatient({ ...patient, age: e.target.value })}
+                placeholder="อายุ"
+                style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '3px' }}>วันที่มารับการตรวจ</label>
+              <input
+                type="text"
+                value={patient.vstdate}
+                onChange={(e) => setPatient({ ...patient, vstdate: e.target.value })}
+                placeholder="ระบุวันที่ตรวจ"
+                style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '10px' }}>
+            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '3px' }}>ที่อยู่ผู้ป่วย</label>
+            <input
+              type="text"
+              value={patient.address}
+              onChange={(e) => setPatient({ ...patient, address: e.target.value })}
+              placeholder="บ้านเลขที่ หมู่ที่ ตำบล อำเภอ จังหวัด"
+              style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '3px' }}>🩺 อาการเจ็บป่วย / ความเห็นผู้ตรวจ</label>
+            <textarea
+              rows={2}
+              value={patient.symptoms}
+              onChange={(e) => setPatient({ ...patient, symptoms: e.target.value })}
+              placeholder="ระบุอาการเจ็บป่วย หรือผลการตรวจ"
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                fontSize: '14px',
+                boxSizing: 'border-box',
+                resize: 'vertical'
+              }}
+            />
+          </div>
         </div>
 
-        {/* Step 3: ตั้งค่าเลขที่และเลือกผู้ลงนาม */}
+        {/* 3. เลือกผู้ลงนามและตั้งค่าเอกสาร */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
           <div style={{ gridColumn: 'span 2' }}>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>
-              👤 เลือกผู้ตรวจ/ผู้ลงนาม (จากข้อมูลบุคลากร)
+              🖊️ เลือกผู้ตรวจ/ผู้ลงนาม (จากข้อมูลบุคลากร)
             </label>
             <select
               value={selectedStaffId}
