@@ -377,10 +377,10 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         borderRadius: '6px'
       }}>
         
-        {/* 🦅 เรียกใช้ไฟล์ภาพ Garuda_Emblem_of_Thailand_(Monochrome).jpg จากโฟลเดอร์ public */}
+        {/* 🦅 เรียกใช้ไฟล์ภาพ garuda.jpg จากโฟลเดอร์ public */}
         <div style={{ textAlign: 'center', marginBottom: '10px' }}>
           <img
-            src="/Garuda_Emblem_of_Thailand_(Monochrome).jpg"
+            src="/garuda.jpg"
             alt="ตราครุฑ"
             style={{ width: '90px', height: 'auto', display: 'block', margin: '0 auto' }}
           />
