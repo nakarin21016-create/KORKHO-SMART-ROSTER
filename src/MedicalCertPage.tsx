@@ -31,7 +31,7 @@ interface MedicalCertPageProps {
   staff?: Staff[];
 }
 
-// 🦅 Public URL ตราครุฑจาก Supabase Storage ของคุณ
+// 🦅 Public URL ตราครุฑจาก Supabase Storage
 const SUPABASE_GARUDA_URL = "https://usbqvlbasiktsovybvre.supabase.co/storage/v1/object/public/picture/garuda.jpg.svg";
 
 export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) => {
@@ -133,7 +133,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
   };
 
   return (
-    <div style={{ maxWidth: '850px', margin: '0 auto', padding: '20px', fontFamily: 'Sarabun, Tahoma, sans-serif' }}>
+    <div style={{ maxWidth: '850px', margin: '0 auto', padding: '20px', fontFamily: "'TH Sarabun PSK', 'TH Sarabun New', Sarabun, sans-serif" }}>
       
       {/* 🛠️ แผงควบคุม (ซ่อนเมื่อสั่งพิมพ์) */}
       <div className="no-print" style={{
@@ -142,7 +142,8 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         borderRadius: '12px',
         boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
         border: '1px solid #e2e8f0',
-        marginBottom: '30px'
+        marginBottom: '30px',
+        fontFamily: 'Sarabun, sans-serif' // แผงควบคุมใช้ฟอนต์อ่านง่ายสำหรับ UI
       }}>
         <div style={{ borderBottom: '1px solid #edf2f7', paddingBottom: '12px', marginBottom: '16px' }}>
           <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 4px 0', color: '#1e293b' }}>
@@ -369,13 +370,14 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         </div>
       </div>
 
-      {/* 📄 ตัวเอกสารหนังสือรับรองทางการ A4 */}
+      {/* 📄 ตัวเอกสารหนังสือรับรองทางการ A4 (ใช้ฟอนต์ TH Sarabun PSK) */}
       <div id="print-area" style={{
         backgroundColor: '#ffffff',
         padding: '50px 60px',
         color: '#000000',
-        lineHeight: '2.2',
-        fontSize: '18px',
+        lineHeight: '1.8',
+        fontFamily: "'TH Sarabun PSK', 'TH Sarabun New', Sarabun, sans-serif",
+        fontSize: '20px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
         borderRadius: '6px'
       }}>
@@ -395,16 +397,16 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
           />
         </div>
 
-        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '22px', marginBottom: '24px' }}>
+        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '28px', marginBottom: '20px' }}>
           หนังสือรับรอง
         </div>
 
         {/* เลขที่ & ชื่อสถานที่ */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', fontSize: '17px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', fontSize: '20px' }}>
           <div style={{ width: '50%' }}>
             ที่ {docNumber}
           </div>
-          <div style={{ width: '50%', textAlign: 'left', paddingLeft: '20px', lineHeight: '1.4' }}>
+          <div style={{ width: '50%', textAlign: 'left', paddingLeft: '20px', lineHeight: '1.3' }}>
             <p style={{ margin: 0, fontWeight: 'bold' }}>โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค</p>
             <p style={{ margin: 0 }}>อำเภอเมืองสุรินทร์ จังหวัดสุรินทร์</p>
           </div>
@@ -423,7 +425,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
             </span>
           </div>
 
-          <p style={{ textIndent: '3em', margin: '8px 0' }}>
+          <p style={{ textIndent: '3em', margin: '6px 0' }}>
             ประจำโรงพยาบาลส่งเสริมสุขภาพตำบลคอโค อำเภอเมืองสุรินทร์ จังหวัดสุรินทร์ ขอรับรองว่าได้ตรวจรักษา
           </p>
 
@@ -439,21 +441,21 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
             <span>ปี</span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '6px' }}>
             <span>ที่อยู่</span>
             <span style={{ flex: 1, borderBottom: '1px dotted #000', textAlign: 'center', padding: '0 8px' }}>
               {patient.address || 'บ้านเลขที่...........หมู่ที่...........ตำบล..............................อำเภอ..............................จังหวัดสุรินทร์'}
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '6px' }}>
             <span style={{ whiteSpace: 'nowrap' }}>ได้มาตรวจและรับการรักษาด้วยอาการ</span>
             <span style={{ flex: 1, borderBottom: '1px dotted #000', textAlign: 'center', padding: '0 8px' }}>
               {patient.symptoms || '....................................................................................................'}
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '6px' }}>
             <span>เมื่อวันที่</span>
             <span style={{ width: '300px', borderBottom: '1px dotted #000', textAlign: 'center', padding: '0 8px' }}>
               {patient.vstdate || '....................................................'}
@@ -466,8 +468,8 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         </div>
 
         {/* จุดลงนาม */}
-        <div style={{ marginTop: '50px', display: 'flex', justifyContent: 'flex-end', paddingRight: '40px' }}>
-          <div style={{ textAlign: 'center', lineHeight: '2' }}>
+        <div style={{ marginTop: '45px', display: 'flex', justifyContent: 'flex-end', paddingRight: '40px' }}>
+          <div style={{ textAlign: 'center', lineHeight: '1.6' }}>
             <p style={{ margin: 0 }}>ลงชื่อ ...........................................................................</p>
             <p style={{ margin: 0 }}>( {officerName || '...........................................................................'} )</p>
             <p style={{ margin: 0 }}>ตำแหน่ง {officerPosition}</p>
@@ -476,8 +478,17 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
 
       </div>
 
-      {/* 🖨️ สไตล์สำหรับการพิมพ์กระดาษ A4 */}
+      {/* 🖨️ สไตล์ดึง Web Font & ตั้งค่าการพิมพ์ A4 */}
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&family=TH+Sarabun+PSK:wght@400;700&display=swap');
+
+        @font-face {
+          font-family: 'TH Sarabun PSK';
+          src: local('TH Sarabun PSK'), local('THSarabunPSK'), url('https://fonts.gstatic.com/s/th-sarabun-psk/v1/THSarabunPSK-Regular.ttf') format('truetype');
+          font-weight: normal;
+          font-style: normal;
+        }
+
         @media print {
           html, body, #root, main, .app-container {
             background: #ffffff !important;
@@ -486,6 +497,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
             padding: 0 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+            font-family: 'TH Sarabun PSK', 'TH Sarabun New', Sarabun, sans-serif !important;
           }
 
           body * {
@@ -494,6 +506,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
 
           #print-area, #print-area * {
             visibility: visible !important;
+            font-family: 'TH Sarabun PSK', 'TH Sarabun New', Sarabun, sans-serif !important;
           }
 
           #print-area {
