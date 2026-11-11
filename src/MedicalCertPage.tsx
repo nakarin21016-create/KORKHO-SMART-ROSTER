@@ -1,179 +1,253 @@
-import { useState } from 'react'
-import { Search, Printer, Loader2, RefreshCw } from 'lucide-react'
+interface MedicalCertPageProps {
+  staff?: any[]; // หรือเปลี่ยนเป็น Staff[] ตามประเภทข้อมูลที่มีอยู่
+}
+import React, { useState } from 'react';
 
-export function MedicalCertPage({ staff }: { staff: any[] }) {
-  const [cid, setCid] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState({
-    certNo: 'รบ.69/' + String(Math.floor(Math.random() * 900) + 100),
+interface PatientData {
+  hn: string;
+  cid: string;
+  patient_name: string;
+  age: string;
+  address: string;
+  vstdate: string;
+  symptoms: string;
+}
+
+export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff: _staff }) => {
+  const [cidInput, setCidInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // ข้อมูลเจ้าหน้าที่ / ผู้ตรวจ (แก้ไขปรับเปลี่ยนได้)
+  const [docNumber, setDocNumber] = useState('....../..........');
+  const [officerName, setOfficerName] = useState('');
+  const [officerPosition, setOfficerPosition] = useState('พยาบาลวิชาชีพชำนาญการ');
+  const [certDate, setCertDate] = useState(new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }));
+
+  // ข้อมูลผู้ป่วย
+  const [patient, setPatient] = useState<PatientData>({
     hn: '',
     cid: '',
-    patientName: '',
+    patient_name: '',
     age: '',
     address: '',
-    bps: '',
-    bpd: '',
-    weight: '',
-    height: '',
-    pulse: '',
-    temperature: '',
-    symptoms: 'ตรวจสุขภาพทั่วไป ไม่พบอาการผิดปกติ',
-    doctorOpinion: 'จากการตรวจร่างกายเบื้องต้น ผู้รับการตรวจมีสุขภาพร่างกายสมบูรณ์แข็งแรงดี ไม่พบสิ่งผิดปกติที่เป็นอุปสรรคต่อการทำงาน/การเรียน',
-    examinerId: staff && staff.length > 0 ? staff[0].id : ''
-  })
+    vstdate: '',
+    symptoms: ''
+  });
 
-  // ดึงข้อมูลจาก Node.js API Bridge (port 3001)
-  async function fetchFromHosxp() {
-    if (!cid || cid.length !== 13) {
-      alert('กรุณากรอกเลขบัตรประชาชน (CID) 13 หลักให้ถูกต้อง')
-      return
+  const handleFetchData = async () => {
+    if (!cidInput || cidInput.length !== 13) {
+      setError('กรุณากรอกเลขบัตรประชาชน 13 หลักให้ถูกต้อง');
+      return;
     }
-    setLoading(true)
+
+    setLoading(true);
+    setError('');
+
     try {
-      const res = await fetch(`http://10.120.19.220:3001/api/patient/${cid}`)
-      if (!res.ok) throw new Error('ไม่พบข้อมูลผู้ป่วยในระบบ HOSxP')
-      
-      const data = await res.json()
-      setFormData(prev => ({
-        ...prev,
+      // เรียกใช้ IP ของเครื่องรัน API Bridge (พอร์ต 3001)
+      const res = await fetch(`http://10.120.19.220:3001/api/patient/${cidInput}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || data.error || 'ไม่พบข้อมูล');
+      }
+
+      setPatient({
         hn: data.hn || '',
-        cid: data.cid || cid,
-        patientName: data.patient_name || '',
+        cid: data.cid || '',
+        patient_name: data.patient_name || '',
         age: data.age || '',
         address: data.address || '',
-        bps: data.bps || '',
-        bpd: data.bpd || '',
-        weight: data.body_weight || '',
-        height: data.height || '',
-        pulse: data.pulse || '',
-        temperature: data.temperature || '',
-        symptoms: data.symptoms || prev.symptoms
-      }))
+        vstdate: data.vstdate ? new Date(data.vstdate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : '',
+        symptoms: data.symptoms || 'ตรวจสุขภาพทั่วไป'
+      });
     } catch (err: any) {
-      alert('เกิดข้อผิดพลาด: ' + err.message)
+      setError(err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const selectedExaminer = staff?.find(s => s.id === formData.examinerId)
+  const handlePrint = () => {
+    window.print();
+  };
 
   return (
-    <div className="page-content" style={{ padding: '20px' }}>
-      {/* Header */}
-      <div className="page-heading no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <div>
-          <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#0284c7' }}>MEDICAL CERTIFICATE</div>
-          <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: '4px 0' }}>ระบบออกใบรับรองการตรวจ / ใบรับรองสุขภาพ</h1>
-          <p style={{ color: '#64748b', margin: 0 }}>โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค อำเภอเมืองสุรินทร์ จังหวัดสุรินทร์</p>
-        </div>
-        <button onClick={() => window.print()} className="btn primary" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', backgroundColor: '#0284c7', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
-          <Printer size={18} /> พิมพ์ใบรับรอง
-        </button>
-      </div>
-
-      {/* Form ค้นหา & กรอกข้อมูล */}
-      <div className="panel no-print" style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '24px' }}>
-        <h2 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Search size={18} /> ค้นหาข้อมูลผู้ป่วยจาก HOSxP
-        </h2>
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
-          <input 
-            type="text" 
-            placeholder="กรอกเลขบัตรประชาชน (CID 13 หลัก)..."
-            value={cid}
-            onChange={e => setCid(e.target.value)}
-            style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+    <div className="p-6 max-w-4xl mx-auto font-sans">
+      {/* 🛠️ ส่วนฟอร์มกรอกข้อมูล / ค้นหา (ไม่แสดงตอนสั่งพิมพ์) */}
+      <div className="print:hidden bg-white p-6 rounded-lg shadow-md mb-8 space-y-4 border border-gray-200">
+        <h2 className="text-xl font-bold text-gray-800 border-b pb-2">ระบบออกหนังสือรับรอง (รพ.สต.คอโค)</h2>
+        
+        <div className="flex gap-3 items-center">
+          <input
+            type="text"
+            placeholder="กรอก CID 13 หลักผู้ป่วย"
+            value={cidInput}
+            onChange={(e) => setCidInput(e.target.value)}
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            maxLength={13}
           />
-          <button onClick={fetchFromHosxp} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 20px', backgroundColor: '#0f172a', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
-            {loading ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
-            ดึงข้อมูลจาก HOSxP
+          <button
+            onClick={handleFetchData}
+            disabled={loading}
+            className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 transition"
+          >
+            {loading ? 'กำลังดึงข้อมูล...' : 'ค้นหาข้อมูล HOSxP'}
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+        {error && <p className="text-red-500 text-sm">{error}</p>}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
           <div>
-            <label style={{ fontSize: '13px', display: 'block', marginBottom: '4px' }}>เลขที่เอกสาร</label>
-            <input type="text" value={formData.certNo} onChange={e => setFormData({...formData, certNo: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
-          </div>
-          <div>
-            <label style={{ fontSize: '13px', display: 'block', marginBottom: '4px' }}>HN</label>
-            <input type="text" value={formData.hn} onChange={e => setFormData({...formData, hn: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
-          </div>
-          <div>
-            <label style={{ fontSize: '13px', display: 'block', marginBottom: '4px' }}>ชื่อ-นามสกุล</label>
-            <input type="text" value={formData.patientName} onChange={e => setFormData({...formData, patientName: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
-          </div>
-          <div>
-            <label style={{ fontSize: '13px', display: 'block', marginBottom: '4px' }}>อายุ (ปี)</label>
-            <input type="text" value={formData.age} onChange={e => setFormData({...formData, age: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+            <label className="block text-xs text-gray-500 mb-1">เลขที่หนังสือ (เล่มที่/เลขที่)</label>
+            <input
+              type="text"
+              value={docNumber}
+              onChange={(e) => setDocNumber(e.target.value)}
+              className="w-full px-3 py-1.5 border rounded text-sm"
+            />
           </div>
           <div>
-            <label style={{ fontSize: '13px', display: 'block', marginBottom: '4px' }}>ความดัน (BPS/BPD)</label>
-            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-              <input type="text" placeholder="120" value={formData.bps} onChange={e => setFormData({...formData, bps: e.target.value})} style={{ width: '50%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
-              /
-              <input type="text" placeholder="80" value={formData.bpd} onChange={e => setFormData({...formData, bpd: e.target.value})} style={{ width: '50%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
-            </div>
+            <label className="block text-xs text-gray-500 mb-1">ชื่อผู้ตรวจ/ผู้ออกหนังสือ</label>
+            <input
+              type="text"
+              value={officerName}
+              placeholder="เช่น นางสาวใจดี มีสุข"
+              onChange={(e) => setOfficerName(e.target.value)}
+              className="w-full px-3 py-1.5 border rounded text-sm"
+            />
           </div>
           <div>
-            <label style={{ fontSize: '13px', display: 'block', marginBottom: '4px' }}>น้ำหนัก (กก.) / ส่วนสูง (ซม.)</label>
-            <div style={{ display: 'flex', gap: '4px' }}>
-              <input type="text" placeholder="กก." value={formData.weight} onChange={e => setFormData({...formData, weight: e.target.value})} style={{ width: '50%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
-              <input type="text" placeholder="ซม." value={formData.height} onChange={e => setFormData({...formData, height: e.target.value})} style={{ width: '50%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
-            </div>
+            <label className="block text-xs text-gray-500 mb-1">ตำแหน่งผู้ตรวจ</label>
+            <input
+              type="text"
+              value={officerPosition}
+              onChange={(e) => setOfficerPosition(e.target.value)}
+              className="w-full px-3 py-1.5 border rounded text-sm"
+            />
           </div>
-          <div style={{ gridColumn: '1 / -1' }}>
-            <label style={{ fontSize: '13px', display: 'block', marginBottom: '4px' }}>ผลการตรวจ / ความเห็นผู้ตรวจ</label>
-            <textarea rows={2} value={formData.doctorOpinion} onChange={e => setFormData({...formData, doctorOpinion: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">วันที่ออกเอกสาร</label>
+            <input
+              type="text"
+              value={certDate}
+              onChange={(e) => setCertDate(e.target.value)}
+              className="w-full px-3 py-1.5 border rounded text-sm"
+            />
           </div>
-          <div style={{ gridColumn: '1 / -1' }}>
-            <label style={{ fontSize: '13px', display: 'block', marginBottom: '4px' }}>เจ้าหน้าที่ผู้ตรวจ / ผู้ลงนาม</label>
-            <select value={formData.examinerId} onChange={e => setFormData({...formData, examinerId: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-              {staff?.map(s => (
-                <option key={s.id} value={s.id}>{s.first_name} {s.last_name} ({s.position})</option>
-              ))}
-            </select>
-          </div>
+        </div>
+
+        <div className="pt-2 flex justify-end">
+          <button
+            onClick={handlePrint}
+            className="bg-emerald-600 text-white px-6 py-2 rounded-md hover:bg-emerald-700 transition font-medium flex items-center gap-2"
+          >
+            🖨️ สั่งพิมพ์หนังสือรับรอง
+          </button>
         </div>
       </div>
 
-      {/* พรีวิวใบรับรองสำหรับพิมพ์ */}
-      <div className="panel print-area" style={{ backgroundColor: '#fff', padding: '40px', borderRadius: '12px', border: '1px solid #cbd5e1', maxWidth: '800px', margin: '0 auto', fontSize: '15px', lineHeight: '1.8' }}>
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 6px 0' }}>ใบรับรองการตรวจสุขภาพ / การตรวจรักษา</h2>
-          <p style={{ margin: 0, fontWeight: 'bold' }}>โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค อำเภอเมืองสุรินทร์ จังหวัดสุรินทร์</p>
-          <p style={{ margin: 0, fontSize: '13px', color: '#475569' }}>เลขที่เอกสาร: {formData.certNo} | HN: {formData.hn || '-'}</p>
+      {/* 📄 เอกสารหนังสือรับรอง (รูปแบบตรงตามกระดาษต้นแบบ) */}
+      <div id="print-area" className="bg-white p-12 text-black leading-relaxed font-sarabun text-[18px]">
+        
+        {/* ตราครุฑ */}
+        <div className="flex justify-center mb-4">
+          <img 
+            src="https://upload.wikimedia.org/wikipedia/commons/c/c5/Garuda_Emb_of_Thailand.svg" 
+            alt="ตราครุฑ" 
+            className="h-28 w-auto object-contain"
+          />
         </div>
 
-        <div style={{ marginBottom: '20px' }}>
-          <p>หนังสือรับรองฉบับนี้ขอรับรองว่า <b>{formData.patientName || '...................................................'}</b> อายุ <b>{formData.age || '......'}</b> ปี </p>
-          <p>เลขประจำตัวประชาชน <b>{formData.cid || '...................................................'}</b></p>
-          <p>ที่อยู่ <b>{formData.address || '.......................................................................................................................'}</b></p>
-          <p>ได้เข้ารับการตรวจร่างกายและตรวจสุขภาพ ณ โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค โดยมีผลการตรวจสัญญาณชีพเบื้องต้น ดังนี้:</p>
+        {/* หัวเรื่องหนังสือรับรอง */}
+        <div className="text-center font-bold text-xl mb-6">
+          หนังสือรับรอง
         </div>
 
-        <div style={{ backgroundColor: '#f8fafc', border: '1px solid #cbd5e1', padding: '12px 20px', borderRadius: '8px', marginBottom: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-          <div>• ความดันโลหิต: <b>{formData.bps && formData.bpd ? `${formData.bps}/${formData.bpd} mmHg` : '-'}</b></div>
-          <div>• น้ำหนัก / ส่วนสูง: <b>{formData.weight ? `${formData.weight} กก.` : '-'} / {formData.height ? `${formData.height} ซม.` : '-'}</b></div>
-          <div>• ชีพจร: <b>{formData.pulse ? `${formData.pulse} ครั้ง/นาที` : '-'}</b></div>
-          <div>• อุณหภูมิร่างกาย: <b>{formData.temperature ? `${formData.temperature} °C` : '-'}</b></div>
-        </div>
-
-        <div style={{ marginBottom: '30px' }}>
-          <p><b>ผลการตรวจและความเห็นผู้ตรวจ:</b></p>
-          <p style={{ textIndent: '36px' }}>{formData.doctorOpinion}</p>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '60px', textAlign: 'center' }}>
-          <div style={{ width: '280px' }}>
-            <p>ลงชื่อ..........................................................ผู้ตรวจ</p>
-            <p style={{ margin: '4px 0 0 0', fontWeight: 'bold' }}>({selectedExaminer ? `${selectedExaminer.first_name} ${selectedExaminer.last_name}` : '...................................................'})</p>
-            <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#475569' }}>{selectedExaminer?.position || 'ตำแหน่ง..........................................'}</p>
-            <p style={{ margin: '8px 0 0 0', fontSize: '13px' }}>วันที่ {new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        {/* หัวกระดาษฝั่งขวา & เลขที่ฝั่งซ้าย */}
+        <div className="flex justify-between items-start mb-8">
+          <div className="w-1/2">
+            ที่ {docNumber}
+          </div>
+          <div className="w-1/2 text-left pl-8 leading-tight">
+            <p>โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค</p>
+            <p>อำเภอเมืองสุรินทร์ จังหวัดสุรินทร์</p>
           </div>
         </div>
+
+        {/* เนื้อหาเอกสาร */}
+        <div className="space-y-4 text-justify">
+          <div className="flex items-baseline">
+            <span className="w-24 text-right pr-2">ข้าพเจ้า</span>
+            <span className="flex-1 border-b border-dotted border-black px-2 text-center">{officerName || '...........................................................................'}</span>
+            <span className="px-2">ตำแหน่ง</span>
+            <span className="flex-1 border-b border-dotted border-black px-2 text-center">{officerPosition}</span>
+          </div>
+
+          <p className="leading-loose">
+            ประจำโรงพยาบาลส่งเสริมสุขภาพตำบลคอโค อำเภอเมืองสุรินทร์ จังหวัดสุรินทร์ ขอรับรองว่าได้ตรวจรักษา
+          </p>
+
+          <div className="flex items-baseline leading-loose">
+            <span>ผู้ป่วยชื่อ</span>
+            <span className="flex-1 border-b border-dotted border-black px-2 text-center">{patient.patient_name || '............................................................................................................'}</span>
+            <span className="px-2">อายุ</span>
+            <span className="w-24 border-b border-dotted border-black px-2 text-center">{patient.age || '...........'}</span>
+            <span>ปี</span>
+          </div>
+
+          <div className="flex items-baseline leading-loose">
+            <span>ที่อยู่ {patient.address || 'บ้านเลขที่...........หมู่ที่...........ตำบล..............................อำเภอ..............................จังหวัดสุรินทร์'}</span>
+          </div>
+
+          <div className="flex items-baseline leading-loose">
+            <span className="whitespace-nowrap">ได้มาตรวจและรับการรักษาด้วยอาการ</span>
+            <span className="flex-1 border-b border-dotted border-black px-2 text-center">{patient.symptoms || '....................................................................................................'}</span>
+          </div>
+
+          <div className="flex items-baseline leading-loose">
+            <span>เมื่อวันที่</span>
+            <span className="w-80 border-b border-dotted border-black px-2 text-center">{patient.vstdate || '....................................................'}</span>
+          </div>
+
+          <div className="pt-8 text-center leading-loose">
+            จึงรับรองไว้เป็นหลักฐาน ให้ไว้ ณ วันที่ {certDate}
+          </div>
+        </div>
+
+        {/* ส่วนลงชื่อท้ายเอกสาร */}
+        <div className="mt-16 flex flex-col items-center pl-32">
+          <div className="text-center space-y-4">
+            <p>ลงชื่อ ...........................................................................</p>
+            <p>( {officerName || '...........................................................................'} )</p>
+            <p>ตำแหน่ง {officerPosition}</p>
+          </div>
+        </div>
+
       </div>
+
+      {/* CSS สไตล์สำหรับการพิมพ์ (ซ่อนปุ่ม และปรับ Margin หน้ากระดาษ A4) */}
+      <style>{`
+        @media print {
+          body {
+            background-color: white !important;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
+          #print-area {
+            padding: 0 !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 20mm 20mm 20mm 20mm;
+          }
+        }
+      `}</style>
     </div>
-  )
-}
+  );
+};
