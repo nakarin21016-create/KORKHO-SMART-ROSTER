@@ -377,7 +377,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         borderRadius: '6px'
       }}>
         
-        {/* 🦅 เรียกใช้ไฟล์ภาพตราครุฑ local โดยตรง */}
+        {/* 🦅 แสดงรูปตราครุฑต้นฉบับจากโฟลเดอร์ public */}
         <div style={{ textAlign: 'center', marginBottom: '10px' }}>
           <img
             src="/482457_10200601494981789_1825578775_n.jpg"
