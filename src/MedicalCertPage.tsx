@@ -31,7 +31,6 @@ interface MedicalCertPageProps {
   staff?: Staff[];
 }
 
-// 🦅 Public URL ตราครุฑจาก Supabase Storage
 const SUPABASE_GARUDA_URL = "https://usbqvlbasiktsovybvre.supabase.co/storage/v1/object/public/picture/garuda.jpg.svg";
 
 export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) => {
@@ -39,7 +38,6 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // ฟิลด์ข้อมูลใบรับรองและผู้ลงนาม
   const [docNumber, setDocNumber] = useState('....../..........');
   const [selectedStaffId, setSelectedStaffId] = useState<string>('');
   const [officerName, setOfficerName] = useState('');
@@ -48,7 +46,6 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
   );
 
-  // ข้อมูลผู้ป่วย
   const [patient, setPatient] = useState<PatientData>({
     hn: '',
     cid: '',
@@ -59,18 +56,15 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     symptoms: 'ตรวจสุขภาพทั่วไป'
   });
 
-  // 🛠️ ฟังก์ชันดึงชื่อ-สกุลบุคลากร
   const getStaffFullName = (s: Staff) => {
     if (s.name && s.name.trim() !== '') return s.name;
     if (s.fullname && s.fullname.trim() !== '') return s.fullname;
     const prefix = s.prefix || s.pname || '';
     const firstName = s.firstName || s.fname || s.first_name || '';
     const lastName = s.lastName || s.lname || s.last_name || '';
-    const full = `${prefix}${firstName} ${lastName}`.trim();
-    return full || '';
+    return `${prefix}${firstName} ${lastName}`.trim();
   };
 
-  // 🖊️ ระบบเลือกผู้ลงนาม
   const handleStaffChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     setSelectedStaffId(value);
@@ -88,7 +82,6 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     }
   };
 
-  // 🔍 ฟังก์ชันดึงข้อมูลจาก Node.js API Bridge
   const handleFetchData = async () => {
     if (!cidInput || cidInput.length !== 13) {
       setError('กรุณากรอกเลขบัตรประชาชน 13 หลักให้ถูกต้อง');
@@ -106,12 +99,15 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         throw new Error(data.message || data.error || 'ไม่พบข้อมูลผู้ป่วย');
       }
 
+      // ดึงค่า address ที่ได้จากฐานข้อมูลโดยตรง
+      const fetchedAddress = data.address || '';
+
       setPatient({
         hn: data.hn || '',
         cid: data.cid || '',
         patient_name: data.patient_name || '',
         age: data.age || '',
-        address: data.address || 'บ้านเลขที่............หมู่ที่............ตำบล................................อำเภอ................................จังหวัดสุรินทร์',
+        address: fetchedAddress,
         vstdate: data.vstdate
           ? new Date(data.vstdate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
           : new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
@@ -131,7 +127,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
   return (
     <div style={{ maxWidth: '850px', margin: '0 auto', padding: '20px', fontFamily: "'TH Sarabun PSK', 'TH Sarabun New', Sarabun, sans-serif" }}>
       
-      {/* 🛠️ แผงควบคุม (ซ่อนเมื่อสั่งพิมพ์) */}
+      {/* แผงควบคุม */}
       <div className="no-print" style={{
         backgroundColor: '#ffffff',
         padding: '24px',
@@ -150,7 +146,6 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
           </p>
         </div>
 
-        {/* 1. ค้นหา CID */}
         <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
           <input
             type="text"
@@ -193,7 +188,6 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
           </div>
         )}
 
-        {/* 2. ข้อมูลผู้ป่วย */}
         <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
           <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#334155', marginBottom: '10px' }}>
             👤 ข้อมูลผู้ป่วย (ดึงอัตโนมัติ / แก้ไขเฉพาะครั้งนี้ได้)
@@ -233,12 +227,12 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
           </div>
 
           <div style={{ marginBottom: '10px' }}>
-            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '3px' }}>ที่อยู่ผู้ป่วย (ดึงอัตโนมัติ / แก้ไขปรับเพิ่มได้)</label>
+            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '3px' }}>ที่อยู่ผู้ป่วย (ดึงอัตโนมัติจาก HOSxP)</label>
             <input
               type="text"
               value={patient.address}
               onChange={(e) => setPatient({ ...patient, address: e.target.value })}
-              placeholder="บ้านเลขที่ หมู่ ตำบล อำเภอ จังหวัด"
+              placeholder="ระบุที่อยู่"
               style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }}
             />
           </div>
@@ -263,7 +257,6 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
           </div>
         </div>
 
-        {/* 3. เลือกผู้ลงนามและตั้งค่าเอกสาร */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '14px' }}>
           <div style={{ gridColumn: 'span 2' }}>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>
@@ -364,7 +357,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         </div>
       </div>
 
-      {/* 📄 ตัวเอกสารหนังสือรับรองทางการ A4 */}
+      {/* 📄 ตัวเอกสารหนังสือรับรอง A4 */}
       <div id="print-area" style={{
         backgroundColor: '#ffffff',
         padding: '50px 60px',
@@ -419,7 +412,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
           </p>
 
           <p style={{ margin: '6px 0' }}>
-            ที่อยู่ &nbsp;<strong>{patient.address || 'บ้านเลขที่............หมู่ที่............ตำบล................................อำเภอ................................จังหวัดสุรินทร์'}</strong>
+            ที่อยู่ &nbsp;<strong>{patient.address || '....................................................................................................'}</strong>
           </p>
 
           <p style={{ margin: '6px 0' }}>
