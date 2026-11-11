@@ -99,15 +99,12 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         throw new Error(data.message || data.error || 'ไม่พบข้อมูลผู้ป่วย');
       }
 
-      // ดึงค่า address ที่ได้จากฐานข้อมูลโดยตรง
-      const fetchedAddress = data.address || '';
-
       setPatient({
         hn: data.hn || '',
         cid: data.cid || '',
         patient_name: data.patient_name || '',
         age: data.age || '',
-        address: fetchedAddress,
+        address: data.address || '',
         vstdate: data.vstdate
           ? new Date(data.vstdate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
           : new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
@@ -127,7 +124,6 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
   return (
     <div style={{ maxWidth: '850px', margin: '0 auto', padding: '20px', fontFamily: "'TH Sarabun PSK', 'TH Sarabun New', Sarabun, sans-serif" }}>
       
-      {/* แผงควบคุม */}
       <div className="no-print" style={{
         backgroundColor: '#ffffff',
         padding: '24px',
@@ -357,7 +353,6 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         </div>
       </div>
 
-      {/* 📄 ตัวเอกสารหนังสือรับรอง A4 */}
       <div id="print-area" style={{
         backgroundColor: '#ffffff',
         padding: '50px 60px',
