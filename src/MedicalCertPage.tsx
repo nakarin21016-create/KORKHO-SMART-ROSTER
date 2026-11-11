@@ -472,19 +472,36 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
 
       <style>{`
         @media print {
-          body {
-            background-color: white !important;
+          /* 1. ซ่อน Element ทุกอย่างในหน้าเว็บก่อน */
+          body * {
+            visibility: hidden !important;
           }
+
+          /* 2. แสดงเฉพาะส่วนเอกสาร #print-area และลูกๆ ของมัน */
+          #print-area, #print-area * {
+            visibility: visible !important;
+          }
+
+          /* 3. จัดตำแหน่งให้เอกสารอยู่ชิดขอบบนซ้ายของกระดาษ A4 */
+          #print-area {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+          }
+
+          /* 4. ซ่อนแผงควบคุมหลัก */
           .no-print {
             display: none !important;
           }
-          #print-area {
-            padding: 0 !important;
-            box-shadow: none !important;
-          }
+
           @page {
             size: A4 portrait;
-            margin: 20mm 15mm 20mm 15mm;
+            margin: 15mm;
           }
         }
       `}</style>
