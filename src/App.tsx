@@ -27,9 +27,9 @@ const menu: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'roster', label: 'จัดตารางเวร', icon: CalendarDays },
   { id: 'compensation', label: 'ค่าตอบแทน', icon: CircleDollarSign },
   { id: 'documents', label: 'ใบเบิกและเอกสาร', icon: FileText },
+  { id: 'work-summary', label: 'สรุปผลการปฏิบัติงาน', icon: ClipboardList },
   { id: 'medical-cert', label: 'ใบรับรองการตรวจ', icon: FileCheck },
   { id: 'appointment', label: 'ออกใบนัดหมายผู้ป่วย', icon: Calendar },
-  { id: 'work-summary', label: 'สรุปผลการปฏิบัติงาน', icon: ClipboardList },
   { id: 'settings', label: 'ตั้งค่าระบบ', icon: Settings },
 ]
 
