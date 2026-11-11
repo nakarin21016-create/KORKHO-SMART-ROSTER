@@ -22,7 +22,13 @@ interface PatientData {
   cid: string;
   patient_name: string;
   age: string;
-  address: string;
+  // ฟิลด์ที่อยู่อาจมาเป็นก้อนเดียว หรือแยกฟิลด์จาก HOSxP
+  address?: string;
+  house_no?: string;
+  moo?: string;
+  tambon?: string;
+  ampur?: string;
+  changwat?: string;
   vstdate: string;
   symptoms: string;
 }
@@ -48,13 +54,18 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
   );
 
-  // ข้อมูลผู้ป่วย
+  // ข้อมูลผู้ป่วยแยกฟิลด์ที่อยู่
   const [patient, setPatient] = useState<PatientData>({
     hn: '',
     cid: '',
     patient_name: '',
     age: '',
     address: '',
+    house_no: '',
+    moo: '',
+    tambon: '',
+    ampur: '',
+    changwat: '',
     vstdate: '',
     symptoms: 'ตรวจสุขภาพทั่วไป'
   });
@@ -69,7 +80,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     const lastName = s.lastName || s.lname || s.last_name || '';
     
     const full = `${prefix}${firstName} ${lastName}`.trim();
-    return full || 'ไม่ระบุชื่อ';
+    return full || '';
   };
 
   // 🖊️ ระบบเลือกผู้ลงนาม
@@ -115,7 +126,13 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         cid: data.cid || '',
         patient_name: data.patient_name || '',
         age: data.age || '',
-        address: data.address || 'บ้านเลขที่...........หมู่ที่...........ตำบล..............................อำเภอ..............................จังหวัดสุรินทร์',
+        address: data.address || '',
+        // ดึงแยกฟิลด์รองรับชื่อฟิลด์จาก HOSxP API Bridge (informaddr / addrnt / moopart / tmbpart...)
+        house_no: data.house_no || data.informaddr || data.addrnt || '',
+        moo: data.moo || data.moopart || '',
+        tambon: data.tambon || data.tmbpart || '',
+        ampur: data.ampur || data.amppart || '',
+        changwat: data.changwat || data.chwpart || 'สุรินทร์',
         vstdate: data.vstdate
           ? new Date(data.vstdate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
           : new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
@@ -126,6 +143,24 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper ฟังก์ชันจัดข้อความที่อยู่ให้อ่านง่าย
+  const renderAddressText = () => {
+    if (patient.address && patient.address.trim() !== '') {
+      return patient.address;
+    }
+    
+    const parts = [];
+    if (patient.house_no) parts.push(`บ้านเลขที่ ${patient.house_no}`);
+    if (patient.moo) parts.push(`หมู่ที่ ${patient.moo}`);
+    if (patient.tambon) parts.push(`ตำบล${patient.tambon}`);
+    if (patient.ampur) parts.push(`อำเภอ${patient.ampur}`);
+    if (patient.changwat) parts.push(`จังหวัด${patient.changwat}`);
+
+    if (parts.length > 0) return parts.join(' ');
+    
+    return 'บ้านเลขที่............หมู่ที่............ตำบล................................อำเภอ................................จังหวัดสุรินทร์';
   };
 
   const handlePrint = () => {
@@ -236,13 +271,14 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
             </div>
           </div>
 
+          {/* ปรับฟิลด์ที่อยู่แบบแยก/รวม */}
           <div style={{ marginBottom: '10px' }}>
-            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '3px' }}>ที่อยู่ผู้ป่วย (ดึงอัตโนมัติ / ปรับแก้ได้)</label>
+            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '3px' }}>ที่อยู่ผู้ป่วย (รวม)</label>
             <input
               type="text"
-              value={patient.address}
+              value={patient.address || `${patient.house_no ? 'บ้านเลขที่ ' + patient.house_no : ''} ${patient.moo ? 'หมู่ ' + patient.moo : ''} ${patient.tambon ? 'ต.' + patient.tambon : ''} ${patient.ampur ? 'อ.' + patient.ampur : ''} ${patient.changwat ? 'จ.' + patient.changwat : ''}`.trim()}
               onChange={(e) => setPatient({ ...patient, address: e.target.value })}
-              placeholder="บ้านเลขที่ หมู่ที่ ตำบล อำเภอ จังหวัด"
+              placeholder="บ้านเลขที่ หมู่ ตำบล อำเภอ จังหวัด"
               style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }}
             />
           </div>
@@ -370,12 +406,12 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         </div>
       </div>
 
-      {/* 📄 ตัวเอกสารหนังสือรับรองทางการ A4 (ใช้ฟอนต์ TH Sarabun PSK) */}
+      {/* 📄 ตัวเอกสารหนังสือรับรองทางการ A4 (ตัด CSS เส้นประออก ป้องกันเส้นซ้อน 100%) */}
       <div id="print-area" style={{
         backgroundColor: '#ffffff',
         padding: '50px 60px',
         color: '#000000',
-        lineHeight: '1.8',
+        lineHeight: '2.0',
         fontFamily: "'TH Sarabun PSK', 'TH Sarabun New', Sarabun, sans-serif",
         fontSize: '20px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
@@ -401,7 +437,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
           หนังสือรับรอง
         </div>
 
-        {/* เลขที่ & ชื่อสถานที่ (ปรับส่วนขวาให้ textAlign: 'right') */}
+        {/* เลขที่ & ชื่อสถานที่ */}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', fontSize: '20px' }}>
           <div style={{ width: '40%' }}>
             ที่ {docNumber}
@@ -412,63 +448,41 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
           </div>
         </div>
 
-        {/* ข้อความเนื้อหา */}
+        {/* ข้อความเนื้อหา (ใช้การเติมคำแบบสะอาด ไม่ใช้ border-bottom ป้องกันเส้นซ้อน) */}
         <div style={{ textAlign: 'justify' }}>
-          <div style={{ display: 'flex', alignItems: 'baseline' }}>
-            <span style={{ minWidth: '70px', textAlign: 'right', paddingRight: '8px' }}>ข้าพเจ้า</span>
-            <span style={{ flex: 1, borderBottom: '1px dotted #000', textAlign: 'center', padding: '0 8px' }}>
-              {officerName || '...........................................................................'}
-            </span>
-            <span style={{ padding: '0 8px' }}>ตำแหน่ง</span>
-            <span style={{ flex: 1, borderBottom: '1px dotted #000', textAlign: 'center', padding: '0 8px' }}>
-              {officerPosition}
-            </span>
-          </div>
+          <p style={{ margin: '6px 0' }}>
+            ข้าพเจ้า &nbsp;<strong>{officerName || '...........................................................................'}</strong>&nbsp;
+            ตำแหน่ง &nbsp;<strong>{officerPosition}</strong>
+          </p>
 
           <p style={{ textIndent: '3em', margin: '6px 0' }}>
             ประจำโรงพยาบาลส่งเสริมสุขภาพตำบลคอโค อำเภอเมืองสุรินทร์ จังหวัดสุรินทร์ ขอรับรองว่าได้ตรวจรักษา
           </p>
 
-          <div style={{ display: 'flex', alignItems: 'baseline' }}>
-            <span>ผู้ป่วยชื่อ</span>
-            <span style={{ flex: 1, borderBottom: '1px dotted #000', textAlign: 'center', padding: '0 8px' }}>
-              {patient.patient_name || '....................................................................................................'}
-            </span>
-            <span style={{ padding: '0 8px' }}>อายุ</span>
-            <span style={{ width: '80px', borderBottom: '1px dotted #000', textAlign: 'center', padding: '0 8px' }}>
-              {patient.age || '...........'}
-            </span>
-            <span>ปี</span>
-          </div>
+          <p style={{ margin: '6px 0' }}>
+            ผู้ป่วยชื่อ &nbsp;<strong>{patient.patient_name || '....................................................................................................'}</strong>&nbsp;
+            อายุ &nbsp;<strong>{patient.age || '...........'}</strong>&nbsp; ปี
+          </p>
 
-          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '6px' }}>
-            <span>ที่อยู่</span>
-            <span style={{ flex: 1, borderBottom: '1px dotted #000', textAlign: 'center', padding: '0 8px' }}>
-              {patient.address || 'บ้านเลขที่...........หมู่ที่...........ตำบล..............................อำเภอ..............................จังหวัดสุรินทร์'}
-            </span>
-          </div>
+          <p style={{ margin: '6px 0' }}>
+            ที่อยู่ &nbsp;<strong>{renderAddressText()}</strong>
+          </p>
 
-          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '6px' }}>
-            <span style={{ whiteSpace: 'nowrap' }}>ได้มาตรวจและรับการรักษาด้วยอาการ</span>
-            <span style={{ flex: 1, borderBottom: '1px dotted #000', textAlign: 'center', padding: '0 8px' }}>
-              {patient.symptoms || '....................................................................................................'}
-            </span>
-          </div>
+          <p style={{ margin: '6px 0' }}>
+            ได้มาตรวจและรับการรักษาด้วยอาการ &nbsp;<strong>{patient.symptoms || '....................................................................................................'}</strong>
+          </p>
 
-          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '6px' }}>
-            <span>เมื่อวันที่</span>
-            <span style={{ width: '300px', borderBottom: '1px dotted #000', textAlign: 'center', padding: '0 8px' }}>
-              {patient.vstdate || '....................................................'}
-            </span>
-          </div>
+          <p style={{ margin: '6px 0' }}>
+            เมื่อวันที่ &nbsp;<strong>{patient.vstdate || '....................................................'}</strong>
+          </p>
 
-          <div style={{ textAlign: 'center', marginTop: '24px' }}>
+          <div style={{ textAlign: 'center', marginTop: '28px' }}>
             จึงรับรองไว้เป็นหลักฐาน ให้ไว้ ณ วันที่ {certDate}
           </div>
         </div>
 
         {/* จุดลงนาม */}
-        <div style={{ marginTop: '45px', display: 'flex', justifyContent: 'flex-end', paddingRight: '40px' }}>
+        <div style={{ marginTop: '50px', display: 'flex', justifyContent: 'flex-end', paddingRight: '40px' }}>
           <div style={{ textAlign: 'center', lineHeight: '1.6' }}>
             <p style={{ margin: 0 }}>ลงชื่อ ...........................................................................</p>
             <p style={{ margin: 0 }}>( {officerName || '...........................................................................'} )</p>
