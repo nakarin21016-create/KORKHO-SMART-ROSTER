@@ -1,7 +1,15 @@
-interface MedicalCertPageProps {
-  staff?: any[]; // หรือเปลี่ยนเป็น Staff[] ตามประเภทข้อมูลที่มีอยู่
-}
 import React, { useState } from 'react';
+
+// 1. ปรับปรุง Interface Staff ให้ทุกฟิลด์เป็น Optional เพื่อแก้ปัญหา Type Error จาก App.tsx
+export interface Staff {
+  id?: string | number;
+  name?: string;
+  position?: string;
+  prefix?: string;
+  firstName?: string;
+  lastName?: string;
+  [key: string]: any; // รองรับฟิลด์เพิ่มเติมอื่นๆ
+}
 
 interface PatientData {
   hn: string;
@@ -13,16 +21,23 @@ interface PatientData {
   symptoms: string;
 }
 
-export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff: _staff }) => {
+interface MedicalCertPageProps {
+  staff?: Staff[];
+}
+
+export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) => {
   const [cidInput, setCidInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // ข้อมูลเจ้าหน้าที่ / ผู้ตรวจ (แก้ไขปรับเปลี่ยนได้)
+  // ฟิลด์ข้อมูลใบรับรอง
   const [docNumber, setDocNumber] = useState('....../..........');
+  const [selectedStaffId, setSelectedStaffId] = useState<string>('');
   const [officerName, setOfficerName] = useState('');
   const [officerPosition, setOfficerPosition] = useState('พยาบาลวิชาชีพชำนาญการ');
-  const [certDate, setCertDate] = useState(new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }));
+  const [certDate, setCertDate] = useState(
+    new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+  );
 
   // ข้อมูลผู้ป่วย
   const [patient, setPatient] = useState<PatientData>({
@@ -35,6 +50,22 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff: _staff 
     symptoms: ''
   });
 
+  // เมื่อเลือกผู้ลงนามใน Dropdown ให้ auto-fill ชื่อและตำแหน่ง
+  const handleStaffChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setSelectedStaffId(value);
+
+    const found = staff.find((s, index) => String(s.id ?? index) === value);
+    if (found) {
+      const fullName = found.name || `${found.prefix || ''}${found.firstName || ''} ${found.lastName || ''}`.trim();
+      setOfficerName(fullName);
+      setOfficerPosition(found.position || 'พยาบาลวิชาชีพชำนาญการ');
+    } else {
+      setOfficerName('');
+      setOfficerPosition('พยาบาลวิชาชีพชำนาญการ');
+    }
+  };
+
   const handleFetchData = async () => {
     if (!cidInput || cidInput.length !== 13) {
       setError('กรุณากรอกเลขบัตรประชาชน 13 หลักให้ถูกต้อง');
@@ -45,12 +76,11 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff: _staff 
     setError('');
 
     try {
-      // เรียกใช้ IP ของเครื่องรัน API Bridge (พอร์ต 3001)
       const res = await fetch(`http://10.120.19.220:3001/api/patient/${cidInput}`);
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || data.error || 'ไม่พบข้อมูล');
+        throw new Error(data.message || data.error || 'ไม่พบข้อมูลผู้ป่วย');
       }
 
       setPatient({
@@ -59,11 +89,13 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff: _staff 
         patient_name: data.patient_name || '',
         age: data.age || '',
         address: data.address || '',
-        vstdate: data.vstdate ? new Date(data.vstdate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }) : '',
+        vstdate: data.vstdate
+          ? new Date(data.vstdate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
+          : '',
         symptoms: data.symptoms || 'ตรวจสุขภาพทั่วไป'
       });
     } catch (err: any) {
-      setError(err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ');
+      setError(err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ HOSxP');
     } finally {
       setLoading(false);
     }
@@ -74,152 +106,183 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff: _staff 
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto font-sans">
-      {/* 🛠️ ส่วนฟอร์มกรอกข้อมูล / ค้นหา (ไม่แสดงตอนสั่งพิมพ์) */}
-      <div className="print:hidden bg-white p-6 rounded-lg shadow-md mb-8 space-y-4 border border-gray-200">
-        <h2 className="text-xl font-bold text-gray-800 border-b pb-2">ระบบออกหนังสือรับรอง (รพ.สต.คอโค)</h2>
-        
-        <div className="flex gap-3 items-center">
+    <div className="p-4 md:p-8 max-w-4xl mx-auto font-sans">
+      {/* 🛠️ แผงควบคุมและค้นหาข้อมูล (ซ่อนเมื่อกดพิมพ์) */}
+      <div className="print:hidden bg-white p-6 rounded-xl shadow-lg border border-slate-200 mb-8 space-y-5">
+        <div className="border-b border-slate-100 pb-3">
+          <h2 className="text-xl font-bold text-slate-800">ระบบออกหนังสือรับรอง (รพ.สต.คอโค)</h2>
+          <p className="text-xs text-slate-500 mt-1">ค้นหาข้อมูลผู้ป่วยจาก HOSxP และเลือกผู้ลงนามเพื่อพิมพ์เอกสาร</p>
+        </div>
+
+        {/* ค้นหา CID */}
+        <div className="flex flex-col sm:flex-row gap-3">
           <input
             type="text"
             placeholder="กรอก CID 13 หลักผู้ป่วย"
             value={cidInput}
             onChange={(e) => setCidInput(e.target.value)}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
             maxLength={13}
           />
           <button
             onClick={handleFetchData}
             disabled={loading}
-            className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 transition"
+            className="bg-blue-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50 transition shadow-sm"
           >
-            {loading ? 'กำลังดึงข้อมูล...' : 'ค้นหาข้อมูล HOSxP'}
+            {loading ? 'กำลังดึงข้อมูล...' : '🔍 ค้นหาข้อมูล HOSxP'}
           </button>
         </div>
 
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+        {error && <p className="text-red-500 text-xs bg-red-50 p-2.5 rounded-md border border-red-200">{error}</p>}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
+        {/* ฟอร์มเลือกผู้ลงนามและตั้งค่าเอกสาร */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          {/* Dropdown เลือกบุคลากร */}
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+              👤 เลือกผู้ตรวจ/ผู้ลงนาม (จากข้อมูลบุคลากร)
+            </label>
+            <select
+              value={selectedStaffId}
+              onChange={handleStaffChange}
+              className="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">-- กรุณาเลือกผู้ลงนาม --</option>
+              {staff.map((s, index) => {
+                const idVal = String(s.id ?? index);
+                const displayName = s.name || `${s.prefix || ''}${s.firstName || ''} ${s.lastName || ''}`.trim();
+                return (
+                  <option key={idVal} value={idVal}>
+                    {displayName} ({s.position || 'พนักงาน'})
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
           <div>
-            <label className="block text-xs text-gray-500 mb-1">เลขที่หนังสือ (เล่มที่/เลขที่)</label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">เลขที่หนังสือ (เล่มที่/เลขที่)</label>
             <input
               type="text"
               value={docNumber}
               onChange={(e) => setDocNumber(e.target.value)}
-              className="w-full px-3 py-1.5 border rounded text-sm"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm"
             />
           </div>
+
           <div>
-            <label className="block text-xs text-gray-500 mb-1">ชื่อผู้ตรวจ/ผู้ออกหนังสือ</label>
-            <input
-              type="text"
-              value={officerName}
-              placeholder="เช่น นางสาวใจดี มีสุข"
-              onChange={(e) => setOfficerName(e.target.value)}
-              className="w-full px-3 py-1.5 border rounded text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">ตำแหน่งผู้ตรวจ</label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">ตำแหน่งผู้ตรวจ</label>
             <input
               type="text"
               value={officerPosition}
               onChange={(e) => setOfficerPosition(e.target.value)}
-              className="w-full px-3 py-1.5 border rounded text-sm"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm"
             />
           </div>
+
           <div>
-            <label className="block text-xs text-gray-500 mb-1">วันที่ออกเอกสาร</label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">ชื่อ-สกุล ผู้ลงนาม (แก้ไขเพิ่มเติมได้)</label>
+            <input
+              type="text"
+              value={officerName}
+              placeholder="ระบุชื่อผู้ตรวจ"
+              onChange={(e) => setOfficerName(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">วันที่ออกเอกสาร</label>
             <input
               type="text"
               value={certDate}
               onChange={(e) => setCertDate(e.target.value)}
-              className="w-full px-3 py-1.5 border rounded text-sm"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-sm"
             />
           </div>
         </div>
 
-        <div className="pt-2 flex justify-end">
+        <div className="pt-3 border-t border-slate-100 flex justify-end">
           <button
             onClick={handlePrint}
-            className="bg-emerald-600 text-white px-6 py-2 rounded-md hover:bg-emerald-700 transition font-medium flex items-center gap-2"
+            className="bg-emerald-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-emerald-700 active:bg-emerald-800 transition shadow-md flex items-center gap-2"
           >
-            🖨️ สั่งพิมพ์หนังสือรับรอง
+            🖨️ พิมพ์หนังสือรับรอง
           </button>
         </div>
       </div>
 
-      {/* 📄 เอกสารหนังสือรับรอง (รูปแบบตรงตามกระดาษต้นแบบ) */}
-      <div id="print-area" className="bg-white p-12 text-black leading-relaxed font-sarabun text-[18px]">
+      {/* 📄 เอกสารหนังสือรับรอง (แสดงผลตามแบบฟอร์มทางราชการ) */}
+      <div id="print-area" className="bg-white p-10 md:p-14 text-slate-900 leading-relaxed font-serif text-[17px] shadow-sm rounded-md">
         
-        {/* ตราครุฑ */}
-        <div className="flex justify-center mb-4">
-          <img 
-            src="https://upload.wikimedia.org/wikipedia/commons/c/c5/Garuda_Emb_of_Thailand.svg" 
-            alt="ตราครุฑ" 
-            className="h-28 w-auto object-contain"
-          />
+        {/* ตราครุฑ SVG (ไม่พึ่งพารูปภาพภายนอก หมดปัญหาภาพไม่ขึ้น) */}
+        <div className="flex justify-center mb-3">
+          <svg className="w-24 h-24" viewBox="0 0 200 200" fill="currentColor">
+            <path d="M100 15c-3 0-6 2-7 5l-4 12c-8-2-16-1-23 2l-10-8-5 5 5 11c-6 5-10 12-11 20l-12-1-2 7 11 5c-2 8 0 16 4 23l-11 8 4 6 12-4c3 7 9 13 16 16l-6 11 6 4 9-9c8 4 17 5 26 3l1 13 7 1-1-14c9 1 18 0 26-3l9 9 6-4-6-11c7-3 13-9 16-16l12 4 4-6-11-8c4-7 6-15 4-23l11-5-2-7-12 1c-1-8-5-15-11-20l5-11-5-5-10 8c-7-3-15-4-23-2l-4-12c-1-3-4-5-7-5zm0 25c14 0 25 11 25 25s-11 25-25 25-25-11-25-25 11-25 25-25z"/>
+          </svg>
         </div>
 
-        {/* หัวเรื่องหนังสือรับรอง */}
-        <div className="text-center font-bold text-xl mb-6">
+        <div className="text-center font-bold text-xl mb-6 tracking-wide">
           หนังสือรับรอง
         </div>
 
-        {/* หัวกระดาษฝั่งขวา & เลขที่ฝั่งซ้าย */}
-        <div className="flex justify-between items-start mb-8">
-          <div className="w-1/2">
+        {/* ที่ / สถานที่ */}
+        <div className="flex justify-between items-start mb-8 text-[16px]">
+          <div className="w-1/2 pt-1">
             ที่ {docNumber}
           </div>
-          <div className="w-1/2 text-left pl-8 leading-tight">
-            <p>โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค</p>
+          <div className="w-1/2 text-left pl-6 leading-normal">
+            <p className="font-semibold">โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค</p>
             <p>อำเภอเมืองสุรินทร์ จังหวัดสุรินทร์</p>
           </div>
         </div>
 
-        {/* เนื้อหาเอกสาร */}
-        <div className="space-y-4 text-justify">
+        {/* เนื้อหาข้อความ */}
+        <div className="space-y-3.5 text-justify leading-loose">
           <div className="flex items-baseline">
-            <span className="w-24 text-right pr-2">ข้าพเจ้า</span>
-            <span className="flex-1 border-b border-dotted border-black px-2 text-center">{officerName || '...........................................................................'}</span>
+            <span className="w-20 text-right pr-2">ข้าพเจ้า</span>
+            <span className="flex-1 border-b border-dotted border-slate-700 px-2 text-center font-medium">{officerName || '...........................................................................'}</span>
             <span className="px-2">ตำแหน่ง</span>
-            <span className="flex-1 border-b border-dotted border-black px-2 text-center">{officerPosition}</span>
+            <span className="flex-1 border-b border-dotted border-slate-700 px-2 text-center font-medium">{officerPosition}</span>
           </div>
 
-          <p className="leading-loose">
+          <p className="indent-12">
             ประจำโรงพยาบาลส่งเสริมสุขภาพตำบลคอโค อำเภอเมืองสุรินทร์ จังหวัดสุรินทร์ ขอรับรองว่าได้ตรวจรักษา
           </p>
 
-          <div className="flex items-baseline leading-loose">
+          <div className="flex items-baseline">
             <span>ผู้ป่วยชื่อ</span>
-            <span className="flex-1 border-b border-dotted border-black px-2 text-center">{patient.patient_name || '............................................................................................................'}</span>
+            <span className="flex-1 border-b border-dotted border-slate-700 px-2 text-center font-medium">{patient.patient_name || '....................................................................................................'}</span>
             <span className="px-2">อายุ</span>
-            <span className="w-24 border-b border-dotted border-black px-2 text-center">{patient.age || '...........'}</span>
+            <span className="w-20 border-b border-dotted border-slate-700 px-2 text-center font-medium">{patient.age || '...........'}</span>
             <span>ปี</span>
           </div>
 
-          <div className="flex items-baseline leading-loose">
-            <span>ที่อยู่ {patient.address || 'บ้านเลขที่...........หมู่ที่...........ตำบล..............................อำเภอ..............................จังหวัดสุรินทร์'}</span>
+          <div className="flex items-baseline">
+            <span>ที่อยู่</span>
+            <span className="flex-1 border-b border-dotted border-slate-700 px-2 text-center font-medium">
+              {patient.address || 'บ้านเลขที่...........หมู่ที่...........ตำบล..............................อำเภอ..............................จังหวัดสุรินทร์'}
+            </span>
           </div>
 
-          <div className="flex items-baseline leading-loose">
+          <div className="flex items-baseline">
             <span className="whitespace-nowrap">ได้มาตรวจและรับการรักษาด้วยอาการ</span>
-            <span className="flex-1 border-b border-dotted border-black px-2 text-center">{patient.symptoms || '....................................................................................................'}</span>
+            <span className="flex-1 border-b border-dotted border-slate-700 px-2 text-center font-medium">{patient.symptoms || '....................................................................................................'}</span>
           </div>
 
-          <div className="flex items-baseline leading-loose">
+          <div className="flex items-baseline">
             <span>เมื่อวันที่</span>
-            <span className="w-80 border-b border-dotted border-black px-2 text-center">{patient.vstdate || '....................................................'}</span>
+            <span className="w-72 border-b border-dotted border-slate-700 px-2 text-center font-medium">{patient.vstdate || '....................................................'}</span>
           </div>
 
-          <div className="pt-8 text-center leading-loose">
+          <div className="pt-6 text-center">
             จึงรับรองไว้เป็นหลักฐาน ให้ไว้ ณ วันที่ {certDate}
           </div>
         </div>
 
-        {/* ส่วนลงชื่อท้ายเอกสาร */}
-        <div className="mt-16 flex flex-col items-center pl-32">
-          <div className="text-center space-y-4">
+        {/* จุดลงชื่อ */}
+        <div className="mt-14 flex justify-end pr-10">
+          <div className="text-center space-y-3 min-w-[260px]">
             <p>ลงชื่อ ...........................................................................</p>
             <p>( {officerName || '...........................................................................'} )</p>
             <p>ตำแหน่ง {officerPosition}</p>
@@ -228,7 +291,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff: _staff 
 
       </div>
 
-      {/* CSS สไตล์สำหรับการพิมพ์ (ซ่อนปุ่ม และปรับ Margin หน้ากระดาษ A4) */}
+      {/* สไตล์การพิมพ์ A4 */}
       <style>{`
         @media print {
           body {
@@ -239,12 +302,11 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff: _staff 
           }
           #print-area {
             padding: 0 !important;
-            margin: 0 !important;
             box-shadow: none !important;
           }
           @page {
             size: A4 portrait;
-            margin: 20mm 20mm 20mm 20mm;
+            margin: 20mm 15mm 20mm 15mm;
           }
         }
       `}</style>
