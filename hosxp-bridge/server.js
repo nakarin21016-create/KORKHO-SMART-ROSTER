@@ -84,3 +84,57 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🌐 Ready for LAN requests on http://0.0.0.0:${PORT}`);
   console.log(`====================================================`);
 });
+// 💾 API สำหรับบันทึกประวัติการนัดหมาย
+app.post('/api/appointments', async (req, res) => {
+  const {
+    hn, cid, patient_name, age, phone,
+    appointment_type_id, appointment_type_name,
+    appointment_date, appointment_time,
+    location, preparation, doctor_or_staff
+  } = req.body;
+
+  let connection;
+  try {
+    connection = await mysql.createConnection(dbConfig);
+    const query = `
+      INSERT INTO appointments 
+      (hn, cid, patient_name, age, phone, appointment_type_id, appointment_type_name, appointment_date, appointment_time, location, preparation, doctor_or_staff)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    await connection.execute(query, [
+      hn || '', cid || '', patient_name || '', age || '', phone || '',
+      appointment_type_id || '', appointment_type_name || '',
+      appointment_date, appointment_time || '',
+      location || '', preparation || '', doctor_or_staff || ''
+    ]);
+
+    res.json({ success: true, message: 'บันทึกประวัติการนัดหมายสำเร็จ' });
+  } catch (err) {
+    console.error('Error saving appointment:', err);
+    res.status(500).json({ error: 'ไม่สามารถบันทึกประวัติใบนัดหมายได้', details: err.message });
+  } finally {
+    if (connection) await connection.end();
+  }
+});
+
+// 📋 API สำหรับดึงประวัติการนัดหมายประจำวัน
+app.get('/api/appointments', async (req, res) => {
+  const { date } = req.query;
+  let connection;
+  try {
+    connection = await mysql.createConnection(dbConfig);
+    const query = `
+      SELECT * FROM appointments 
+      WHERE appointment_date = ? 
+      ORDER BY created_at DESC
+    `;
+    const [rows] = await connection.execute(query, [date || new Date().toISOString().split('T')[0]]);
+    res.json(rows);
+  } catch (err) {
+    console.error('Error fetching appointments:', err);
+    res.status(500).json({ error: 'ไม่สามารถดึงข้อมูลประวัตินัดหมายได้' });
+  } finally {
+    if (connection) await connection.end();
+  }
+});

@@ -384,7 +384,7 @@ export default function App() {
       <main className="main-area">
         <header className="topbar no-print">
           <button className="icon-button mobile-menu" onClick={() => setMobileNav(true)}><Menu size={21}/></button>
-          <div className="breadcrumb">KORKHO SMART ROSTER <span>/</span> {menu.find(x => x.id === section)?.label}</div>
+          <div className="breadcrumb">KORKHO SMART OFFICE <span>/</span> {menu.find(x => x.id === section)?.label}</div>
           <div className="user-chip"><div className="avatar"><UserRound size={17}/></div><div><b>{session.user.email}</b><small>{userRole === 'admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งาน'}</small></div></div>
         </header>
 
@@ -2271,7 +2271,7 @@ function LoginScreen({ onLogin, error }: { onLogin: (email:string,password:strin
   const [busy,setBusy] = useState(false)
   async function submit(e: FormEvent) { e.preventDefault(); setBusy(true); await onLogin(email,password); setBusy(false) }
   return <div className="login-screen"><div className="login-card">
-    <div className="login-logo"><Activity size={30}/></div><div className="eyebrow">KORKHO SMART ROSTER</div>
+    <div className="login-logo"><Activity size={30}/></div><div className="eyebrow">KORKHO SMART OFFICE</div>
     <h1>เข้าสู่ระบบ</h1><p>ระบบบริหารจัดการตารางเวรและค่าตอบแทน<br/>โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค จังหวัดสุรินทร์</p>
     {error && <div className="alert error">{error}</div>}
     <form onSubmit={submit}><label>อีเมล<input type="email" autoComplete="username" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com"/></label>
