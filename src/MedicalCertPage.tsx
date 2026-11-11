@@ -377,14 +377,31 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         borderRadius: '6px'
       }}>
         
-        {/* ตราครุฑทางการ (ใช้ Wikimedia SVG CDN แสดงผลได้แน่นอนทุกเบราว์เซอร์) */}
+        {/* 🦅 ตราครุฑ SVG Vector ฝังตรงในโค้ด (ไม่ต้องดึงจากเน็ต แสดงผล 100% ชัวร์) */}
         <div style={{ textAlign: 'center', marginBottom: '10px' }}>
-          <img
-            src="https://upload.wikimedia.org/wikipedia/commons/c/c5/Garuda_Emb_of_Thailand.svg"
-            alt="ตราครุฑ"
-            crossOrigin="anonymous"
-            style={{ width: '85px', height: 'auto', display: 'block', margin: '0 auto' }}
-          />
+          <svg
+            width="80"
+            height="85"
+            viewBox="0 0 100 106"
+            style={{ display: 'block', margin: '0 auto' }}
+          >
+            <path
+              fill="#A71930"
+              d="M50 0 C47 5, 41 12, 34 16 C30 18, 24 19, 18 19 C14 19, 9 18, 4 16 C8 24, 15 30, 24 33 C33 36, 42 35, 50 31 C58 35, 67 36, 76 33 C85 30, 92 24, 96 16 C91 18, 86 19, 82 19 C76 19, 70 18, 66 16 C59 12, 53 5, 50 0 Z"
+            />
+            <path
+              fill="#A71930"
+              d="M50 33 L45 42 L35 38 L40 48 L28 48 L36 56 L22 60 L34 66 L20 75 L36 75 L30 88 L44 80 L46 95 L50 88 L54 95 L56 80 L70 88 L64 75 L80 75 L66 66 L78 60 L64 56 L72 48 L60 48 L65 38 L55 42 Z"
+            />
+            <path
+              fill="#A71930"
+              d="M50 22 C44 22, 39 27, 39 33 C39 39, 44 44, 50 44 C56 44, 61 39, 61 33 C61 27, 56 22, 50 22 Z M50 26 C54 26, 57 29, 57 33 C57 37, 54 40, 50 40 C46 40, 43 37, 43 33 C43 29, 46 26, 50 26 Z"
+            />
+            <path
+              fill="#A71930"
+              d="M50 45 C45 45, 40 50, 40 65 L60 65 C60 50, 55 45, 50 45 Z"
+            />
+          </svg>
         </div>
 
         <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '22px', marginBottom: '24px' }}>
