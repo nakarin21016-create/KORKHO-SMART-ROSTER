@@ -143,7 +143,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
         border: '1px solid #e2e8f0',
         marginBottom: '30px',
-        fontFamily: 'Sarabun, sans-serif' // แผงควบคุมใช้ฟอนต์อ่านง่ายสำหรับ UI
+        fontFamily: 'Sarabun, sans-serif'
       }}>
         <div style={{ borderBottom: '1px solid #edf2f7', paddingBottom: '12px', marginBottom: '16px' }}>
           <h2 style={{ fontSize: '20px', fontWeight: 'bold', margin: '0 0 4px 0', color: '#1e293b' }}>
@@ -401,12 +401,12 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
           หนังสือรับรอง
         </div>
 
-        {/* เลขที่ & ชื่อสถานที่ */}
+        {/* เลขที่ & ชื่อสถานที่ (ปรับส่วนขวาให้ textAlign: 'right') */}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', fontSize: '20px' }}>
-          <div style={{ width: '50%' }}>
+          <div style={{ width: '40%' }}>
             ที่ {docNumber}
           </div>
-          <div style={{ width: '50%', textAlign: 'left', paddingLeft: '20px', lineHeight: '1.3' }}>
+          <div style={{ width: '60%', textAlign: 'right', lineHeight: '1.3' }}>
             <p style={{ margin: 0, fontWeight: 'bold' }}>โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค</p>
             <p style={{ margin: 0 }}>อำเภอเมืองสุรินทร์ จังหวัดสุรินทร์</p>
           </div>
