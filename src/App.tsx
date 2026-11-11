@@ -1,3 +1,5 @@
+import { FileCheck } from 'lucide-react' // เพิ่มไอคอน FileCheck
+import { MedicalCertPage } from './MedicalCertPage' // เพิ่ม Import คอมโพเนนต์ใบรับรอง
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   Activity, CalendarDays, CircleDollarSign, FileText,
@@ -8,7 +10,7 @@ import { supabase, isSupabaseConfigured } from './lib/supabase'
 import type { Staff, StaffType } from './types'
 import { WorkSummary } from './components/WorkSummary'
 
-type Section = 'dashboard' | 'staff' | 'roster' | 'work-summary' | 'compensation' | 'documents' | 'settings'
+type Section = 'dashboard' | 'staff' | 'roster' | 'work-summary' | 'compensation' | 'documents' | 'medical-cert' | 'settings'
 
 interface Signer {
   id: string
@@ -23,8 +25,9 @@ const menu: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'roster', label: 'จัดตารางเวร', icon: CalendarDays },
   { id: 'compensation', label: 'ค่าตอบแทน', icon: CircleDollarSign },
   { id: 'documents', label: 'ใบเบิกและเอกสาร', icon: FileText },
-  { id: 'settings', label: 'ตั้งค่าระบบ', icon: Settings },
+  { id: 'medical-cert', label: 'ใบรับรองการตรวจ', icon: FileCheck },
   { id: 'work-summary', label: 'สรุปผลการปฏิบัติงาน', icon: ClipboardList },
+  { id: 'settings', label: 'ตั้งค่าระบบ', icon: Settings },
 ]
 
 const emptyForm = {
@@ -406,6 +409,7 @@ export default function App() {
               toggleCustomHoliday={toggleCustomHoliday}
             />
           )}
+          {section === 'medical-cert' && <MedicalCertPage staff={staff} />}
           {section === 'settings' && <SettingsPage userEmail={session.user.email} userRole={userRole} staffCount={staff.length} />}
         </div>
       </main>
