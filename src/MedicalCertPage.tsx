@@ -56,7 +56,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     symptoms: 'ตรวจสุขภาพทั่วไป'
   });
 
-  // 🛠️ ฟังก์ชันดึงชื่อ-สกุลบุคลากรให้ครอบคลุมทุกโครงสร้างฟิลด์
+  // 🛠️ ฟังก์ชันดึงชื่อ-สกุลบุคลากร
   const getStaffFullName = (s: Staff) => {
     if (s.name && s.name.trim() !== '') return s.name;
     if (s.fullname && s.fullname.trim() !== '') return s.fullname;
@@ -377,7 +377,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         borderRadius: '6px'
       }}>
         
-        {/* 🦅 ตราครุฑลายเส้นทางการขาวดำทรงมาตรฐาน (SVG ในตัว 100% ไม่หลุดแน่นอน) */}
+        {/* 🦅 ตราครุฑแบบ Inline SVG เวกเตอร์คมชัด ไม่พึ่งพาไฟล์ภายนอก 100% */}
         <div style={{ textAlign: 'center', marginBottom: '10px' }}>
           <svg
             width="90"
