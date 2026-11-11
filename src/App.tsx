@@ -1,6 +1,7 @@
 import { Building2 } from 'lucide-react';
-import { FileCheck } from 'lucide-react' // เพิ่มไอคอน FileCheck
+import { FileCheck, Calendar } from 'lucide-react' // เพิ่มไอคอน FileCheck
 import { MedicalCertPage } from './MedicalCertPage' // เพิ่ม Import คอมโพเนนต์ใบรับรอง
+import { AppointmentPage } from './components/AppointmentPage' 
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   Activity, CalendarDays, CircleDollarSign, FileText,
@@ -11,7 +12,7 @@ import { supabase, isSupabaseConfigured } from './lib/supabase'
 import type { Staff, StaffType } from './types'
 import { WorkSummary } from './components/WorkSummary'
 
-type Section = 'dashboard' | 'staff' | 'roster' | 'work-summary' | 'compensation' | 'documents' | 'medical-cert' | 'settings'
+type Section = 'dashboard' | 'staff' | 'roster' | 'work-summary' | 'compensation' | 'documents' | 'medical-cert' | 'appointment' | 'settings'
 
 interface Signer {
   id: string
@@ -27,6 +28,7 @@ const menu: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'compensation', label: 'ค่าตอบแทน', icon: CircleDollarSign },
   { id: 'documents', label: 'ใบเบิกและเอกสาร', icon: FileText },
   { id: 'medical-cert', label: 'ใบรับรองการตรวจ', icon: FileCheck },
+  { id: 'appointment', label: 'ออกใบนัดหมายผู้ป่วย', icon: Calendar },
   { id: 'work-summary', label: 'สรุปผลการปฏิบัติงาน', icon: ClipboardList },
   { id: 'settings', label: 'ตั้งค่าระบบ', icon: Settings },
 ]
@@ -411,6 +413,7 @@ export default function App() {
             />
           )}
           {section === 'medical-cert' && <MedicalCertPage staff={staff} />}
+          {section === 'appointment' && <AppointmentPage />}
           {section === 'settings' && <SettingsPage userEmail={session.user.email} userRole={userRole} staffCount={staff.length} />}
         </div>
       </main>
