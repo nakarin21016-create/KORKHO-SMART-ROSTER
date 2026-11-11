@@ -81,10 +81,28 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         throw new Error(data.message || data.error || 'ไม่พบข้อมูลผู้ป่วย');
       }
 
-      // ดึงข้อมูลที่อยู่จาก API หากไม่มีจะใส่ข้อความรูปแบบตั้งต้นให้
-      const fetchedAddress = data.address || data.informaddr || data.addrpart 
-        ? `${data.address || ''}`.trim()
-        : 'บ้านเลขที่...........หมู่ที่...........ตำบล..............................อำเภอ..............................จังหวัดสุรินทร์';
+      // 🛠️ ตรวจสอบและดึงข้อมูลที่อยู่จาก HOSxP ทุกรูปแบบ
+      let fetchedAddress = '';
+      if (data.address && data.address.trim() !== '') {
+        fetchedAddress = data.address.trim();
+      } else if (data.informaddr && data.informaddr.trim() !== '') {
+        fetchedAddress = data.informaddr.trim();
+      } else if (data.full_address && data.full_address.trim() !== '') {
+        fetchedAddress = data.full_address.trim();
+      } else if (data.addrpart || data.moopart) {
+        // กรณีแยกฟิลด์บ้านเลขที่/หมู่/ตำบล/อำเภอ/จังหวัด
+        const house = data.addrpart ? `บ้านเลขที่ ${data.addrpart}` : '';
+        const moo = data.moopart ? ` หมู่ที่ ${data.moopart}` : '';
+        const tambon = data.tmbpart_name || data.tmbpart ? ` ต.${data.tmbpart_name || data.tmbpart}` : '';
+        const amphoe = data.amppart_name || data.amppart ? ` อ.${data.amppart_name || data.amppart}` : '';
+        const changwat = data.chwpart_name || data.chwpart ? ` จ.${data.chwpart_name || data.chwpart}` : '';
+        fetchedAddress = `${house}${moo}${tambon}${amphoe}${changwat}`.trim();
+      }
+
+      // หากไม่มีข้อมูลที่อยู่ในฐานข้อมูลจริงๆ ค่อยเว้นว่างไว้ให้พิมพ์เติม
+      if (!fetchedAddress) {
+        fetchedAddress = 'บ้านเลขที่...........หมู่ที่...........ตำบล..............................อำเภอ..............................จังหวัดสุรินทร์';
+      }
 
       setPatient({
         hn: data.hn || '',
