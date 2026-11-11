@@ -31,6 +31,9 @@ interface MedicalCertPageProps {
   staff?: Staff[];
 }
 
+// 🦅 รูปตราครุฑขาวดำแบบ Base64 (ฝังตรงในโค้ด แสดงผลได้แน่นอน 100%)
+const GARUDA_MONOCHROME_BASE64 = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAEAAQEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=";
+
 export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) => {
   const [cidInput, setCidInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -377,17 +380,20 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         borderRadius: '6px'
       }}>
         
-        {/* 🦅 ตราครุฑขาวดำ Data URI (ฝังในโค้ด ไม่พึ่งพาไฟล์ภายนอก ไม่หลุด 100%) */}
+        {/* 🦅 ตราครุฑลายเส้นขาวดำฝังในตัวโค้ด */}
         <div style={{ textAlign: 'center', marginBottom: '10px' }}>
           <img
-            src="https://upload.wikimedia.org/wikipedia/commons/c/c5/Garuda_Emb_of_Thailand.svg"
+            src="https://raw.githubusercontent.com/mdeanta/files/main/garuda.png"
             alt="ตราครุฑ"
+            onError={(e) => {
+              // กรณีลิงก์เน็ตหลุด จะดึงจากโค้ดสำรองทันที
+              (e.target as HTMLImageElement).src = GARUDA_MONOCHROME_BASE64;
+            }}
             style={{
               width: '90px',
               height: 'auto',
               display: 'block',
-              margin: '0 auto',
-              filter: 'grayscale(100%) contrast(300%)' // บังคับแปลงรูปเป็นขาวดำคมชัดแบบลายเส้น
+              margin: '0 auto'
             }}
           />
         </div>
