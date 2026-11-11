@@ -22,13 +22,7 @@ interface PatientData {
   cid: string;
   patient_name: string;
   age: string;
-  // ฟิลด์ที่อยู่อาจมาเป็นก้อนเดียว หรือแยกฟิลด์จาก HOSxP
-  address?: string;
-  house_no?: string;
-  moo?: string;
-  tambon?: string;
-  ampur?: string;
-  changwat?: string;
+  address: string;
   vstdate: string;
   symptoms: string;
 }
@@ -54,18 +48,13 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
   );
 
-  // ข้อมูลผู้ป่วยแยกฟิลด์ที่อยู่
+  // ข้อมูลผู้ป่วย
   const [patient, setPatient] = useState<PatientData>({
     hn: '',
     cid: '',
     patient_name: '',
     age: '',
     address: '',
-    house_no: '',
-    moo: '',
-    tambon: '',
-    ampur: '',
-    changwat: '',
     vstdate: '',
     symptoms: 'ตรวจสุขภาพทั่วไป'
   });
@@ -74,11 +63,9 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
   const getStaffFullName = (s: Staff) => {
     if (s.name && s.name.trim() !== '') return s.name;
     if (s.fullname && s.fullname.trim() !== '') return s.fullname;
-    
     const prefix = s.prefix || s.pname || '';
     const firstName = s.firstName || s.fname || s.first_name || '';
     const lastName = s.lastName || s.lname || s.last_name || '';
-    
     const full = `${prefix}${firstName} ${lastName}`.trim();
     return full || '';
   };
@@ -96,14 +83,12 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
 
     const found = staff.find((s, index) => String(s.id ?? index) === value);
     if (found) {
-      const fullName = getStaffFullName(found);
-      setOfficerName(fullName);
-
-      const pos = found.position || found.pos_name || found.role || 'พยาบาลวิชาชีพชำนาญการ';
-      setOfficerPosition(pos);
+      setOfficerName(getStaffFullName(found));
+      setOfficerPosition(found.position || found.pos_name || found.role || 'พยาบาลวิชาชีพชำนาญการ');
     }
   };
 
+  // 🔍 ฟังก์ชันดึงข้อมูลจาก Node.js API Bridge
   const handleFetchData = async () => {
     if (!cidInput || cidInput.length !== 13) {
       setError('กรุณากรอกเลขบัตรประชาชน 13 หลักให้ถูกต้อง');
@@ -126,13 +111,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         cid: data.cid || '',
         patient_name: data.patient_name || '',
         age: data.age || '',
-        address: data.address || '',
-        // ดึงแยกฟิลด์รองรับชื่อฟิลด์จาก HOSxP API Bridge (informaddr / addrnt / moopart / tmbpart...)
-        house_no: data.house_no || data.informaddr || data.addrnt || '',
-        moo: data.moo || data.moopart || '',
-        tambon: data.tambon || data.tmbpart || '',
-        ampur: data.ampur || data.amppart || '',
-        changwat: data.changwat || data.chwpart || 'สุรินทร์',
+        address: data.address || 'บ้านเลขที่............หมู่ที่............ตำบล................................อำเภอ................................จังหวัดสุรินทร์',
         vstdate: data.vstdate
           ? new Date(data.vstdate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
           : new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
@@ -143,24 +122,6 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     } finally {
       setLoading(false);
     }
-  };
-
-  // Helper ฟังก์ชันจัดข้อความที่อยู่ให้อ่านง่าย
-  const renderAddressText = () => {
-    if (patient.address && patient.address.trim() !== '') {
-      return patient.address;
-    }
-    
-    const parts = [];
-    if (patient.house_no) parts.push(`บ้านเลขที่ ${patient.house_no}`);
-    if (patient.moo) parts.push(`หมู่ที่ ${patient.moo}`);
-    if (patient.tambon) parts.push(`ตำบล${patient.tambon}`);
-    if (patient.ampur) parts.push(`อำเภอ${patient.ampur}`);
-    if (patient.changwat) parts.push(`จังหวัด${patient.changwat}`);
-
-    if (parts.length > 0) return parts.join(' ');
-    
-    return 'บ้านเลขที่............หมู่ที่............ตำบล................................อำเภอ................................จังหวัดสุรินทร์';
   };
 
   const handlePrint = () => {
@@ -271,12 +232,11 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
             </div>
           </div>
 
-          {/* ปรับฟิลด์ที่อยู่แบบแยก/รวม */}
           <div style={{ marginBottom: '10px' }}>
-            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '3px' }}>ที่อยู่ผู้ป่วย (รวม)</label>
+            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '3px' }}>ที่อยู่ผู้ป่วย (ดึงอัตโนมัติ / แก้ไขปรับเพิ่มได้)</label>
             <input
               type="text"
-              value={patient.address || `${patient.house_no ? 'บ้านเลขที่ ' + patient.house_no : ''} ${patient.moo ? 'หมู่ ' + patient.moo : ''} ${patient.tambon ? 'ต.' + patient.tambon : ''} ${patient.ampur ? 'อ.' + patient.ampur : ''} ${patient.changwat ? 'จ.' + patient.changwat : ''}`.trim()}
+              value={patient.address}
               onChange={(e) => setPatient({ ...patient, address: e.target.value })}
               placeholder="บ้านเลขที่ หมู่ ตำบล อำเภอ จังหวัด"
               style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }}
@@ -326,11 +286,9 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
                 const idVal = String(s.id ?? index);
                 const displayName = getStaffFullName(s);
                 const pos = s.position || s.pos_name;
-                const posText = pos ? ` (${pos})` : '';
-                
                 return (
                   <option key={idVal} value={idVal}>
-                    {displayName}{posText}
+                    {displayName}{pos ? ` (${pos})` : ''}
                   </option>
                 );
               })}
@@ -406,7 +364,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         </div>
       </div>
 
-      {/* 📄 ตัวเอกสารหนังสือรับรองทางการ A4 (ตัด CSS เส้นประออก ป้องกันเส้นซ้อน 100%) */}
+      {/* 📄 ตัวเอกสารหนังสือรับรองทางการ A4 */}
       <div id="print-area" style={{
         backgroundColor: '#ffffff',
         padding: '50px 60px',
@@ -417,8 +375,6 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
         borderRadius: '6px'
       }}>
-        
-        {/* 🦅 แสดงผลตราครุฑจาก Supabase Storage */}
         <div style={{ textAlign: 'center', marginBottom: '10px' }}>
           <img
             src={SUPABASE_GARUDA_URL}
@@ -437,7 +393,6 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
           หนังสือรับรอง
         </div>
 
-        {/* เลขที่ & ชื่อสถานที่ */}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', fontSize: '20px' }}>
           <div style={{ width: '40%' }}>
             ที่ {docNumber}
@@ -448,7 +403,6 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
           </div>
         </div>
 
-        {/* ข้อความเนื้อหา (ใช้การเติมคำแบบสะอาด ไม่ใช้ border-bottom ป้องกันเส้นซ้อน) */}
         <div style={{ textAlign: 'justify' }}>
           <p style={{ margin: '6px 0' }}>
             ข้าพเจ้า &nbsp;<strong>{officerName || '...........................................................................'}</strong>&nbsp;
@@ -465,7 +419,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
           </p>
 
           <p style={{ margin: '6px 0' }}>
-            ที่อยู่ &nbsp;<strong>{renderAddressText()}</strong>
+            ที่อยู่ &nbsp;<strong>{patient.address || 'บ้านเลขที่............หมู่ที่............ตำบล................................อำเภอ................................จังหวัดสุรินทร์'}</strong>
           </p>
 
           <p style={{ margin: '6px 0' }}>
@@ -481,7 +435,6 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
           </div>
         </div>
 
-        {/* จุดลงนาม */}
         <div style={{ marginTop: '50px', display: 'flex', justifyContent: 'flex-end', paddingRight: '40px' }}>
           <div style={{ textAlign: 'center', lineHeight: '1.6' }}>
             <p style={{ margin: 0 }}>ลงชื่อ ...........................................................................</p>
@@ -489,10 +442,8 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
             <p style={{ margin: 0 }}>ตำแหน่ง {officerPosition}</p>
           </div>
         </div>
-
       </div>
 
-      {/* 🖨️ สไตล์ดึง Web Font & ตั้งค่าการพิมพ์ A4 */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&family=TH+Sarabun+PSK:wght@400;700&display=swap');
 
