@@ -30,7 +30,7 @@ export function MedicalCertPage({ staff }: { staff: any[] }) {
     }
     setLoading(true)
     try {
-      const res = await fetch(`http://localhost:3001/api/patient/${cid}`)
+      const res = await fetch(`http://10.120.19.220:3001/api/patient/${cid}`)
       if (!res.ok) throw new Error('ไม่พบข้อมูลผู้ป่วยในระบบ HOSxP')
       
       const data = await res.json()
