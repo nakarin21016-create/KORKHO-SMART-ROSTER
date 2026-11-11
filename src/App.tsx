@@ -1,3 +1,4 @@
+import { Building2 } from 'lucide-react';
 import { FileCheck } from 'lucide-react' // เพิ่มไอคอน FileCheck
 import { MedicalCertPage } from './MedicalCertPage' // เพิ่ม Import คอมโพเนนต์ใบรับรอง
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
@@ -358,11 +359,11 @@ export default function App() {
       {mobileNav && <button className="mobile-scrim no-print" onClick={() => setMobileNav(false)} aria-label="ปิดเมนู" />}
       <aside className={`sidebar ${mobileNav ? 'sidebar-open' : ''} no-print`}>
         <div className="brand">
-          <div className="brand-mark"><Activity size={25} /></div>
-          <div><strong>KORKHO</strong><span>SMART ROSTER</span></div>
+          <div className="brand-mark"><Building2 size={25} /></div>
+          <div><strong>KORKHO</strong> <span>SMART OFFICE</span></div>
           <button className="icon-button mobile-close" onClick={() => setMobileNav(false)}><X size={19}/></button>
         </div>
-        <div className="facility-label">ระบบบริหารจัดการบุคลากร</div>
+        <div className="facility-label">ระบบบริหารจัดการสำนักงาน รพ.สต.คอโค</div>
         <nav className="nav-list">
           {menu.map((item) => {
             const Icon = item.icon

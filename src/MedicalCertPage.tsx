@@ -81,12 +81,17 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         throw new Error(data.message || data.error || 'ไม่พบข้อมูลผู้ป่วย');
       }
 
+      // ดึงข้อมูลที่อยู่จาก API หากไม่มีจะใส่ข้อความรูปแบบตั้งต้นให้
+      const fetchedAddress = data.address || data.informaddr || data.addrpart 
+        ? `${data.address || ''}`.trim()
+        : 'บ้านเลขที่...........หมู่ที่...........ตำบล..............................อำเภอ..............................จังหวัดสุรินทร์';
+
       setPatient({
         hn: data.hn || '',
         cid: data.cid || '',
         patient_name: data.patient_name || '',
         age: data.age || '',
-        address: data.address || '',
+        address: fetchedAddress,
         vstdate: data.vstdate
           ? new Date(data.vstdate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
           : new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
@@ -120,7 +125,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
             ระบบออกหนังสือรับรอง (รพ.สต.คอโค)
           </h2>
           <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
-            ดึงข้อมูล HOSxP &gt; ตรวจสอบ/แก้ไขข้อมูลผู้ป่วย &gt; เลือกผู้ลงนามเพื่อพิมพ์
+            ดึงข้อมูล HOSxP &gt; ตรวจสอบ/แก้ไขข้อมูลผู้ป่วยเฉพาะครั้งนี้ &gt; เลือกผู้ลงนามเพื่อพิมพ์
           </p>
         </div>
 
@@ -167,10 +172,10 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
           </div>
         )}
 
-        {/* 2. ส่วนข้อมูลผู้ป่วย (ดึงจาก HOSxP และแก้ไขเพิ่มเติมได้) */}
+        {/* 2. ส่วนข้อมูลผู้ป่วย (ดึงอัตโนมัติ + แก้ไขเฉพาะครั้งนี้ได้) */}
         <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
           <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#334155', marginBottom: '10px' }}>
-            👤 ข้อมูลผู้ป่วย (ดึงอัตโนมัติ / แก้ไขเพิ่มเติมได้)
+            👤 ข้อมูลผู้ป่วย (ดึงอัตโนมัติ / แก้ไขเฉพาะครั้งนี้ได้)
           </div>
           
           <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 2fr', gap: '10px', marginBottom: '10px' }}>
@@ -207,7 +212,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
           </div>
 
           <div style={{ marginBottom: '10px' }}>
-            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '3px' }}>ที่อยู่ผู้ป่วย</label>
+            <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '3px' }}>ที่อยู่ผู้ป่วย (ดึงอัตโนมัติ / ปรับแก้ได้)</label>
             <input
               type="text"
               value={patient.address}
