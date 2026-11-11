@@ -380,12 +380,16 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         borderRadius: '6px'
       }}>
         
-        {/* ตราครุฑ */}
+        {/* ตราครุฑ (ใช้ PNG เสถียรสูง พร้อม fallback) */}
         <div style={{ textAlign: 'center', marginBottom: '10px' }}>
           <img
-            src="https://upload.wikimedia.org/wikipedia/commons/c/c5/Garuda_Emb_of_Thailand.svg"
+            src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Garuda_Emb_of_Thailand.svg/300px-Garuda_Emb_of_Thailand.svg.png"
             alt="ตราครุฑ"
-            style={{ width: '100px', height: '100px', objectFit: 'contain' }}
+            onError={(e) => {
+              // กรณีลิงก์หลักโดนบล็อก ให้เปลี่ยนไปใช้ลิงก์สำรองทันที
+              (e.target as HTMLImageElement).src = "https://raw.githubusercontent.com/tesseract-ocr/tessdata/main/script/Thai.png";
+            }}
+            style={{ width: '85px', height: 'auto', display: 'block', margin: '0 auto' }}
           />
         </div>
 
@@ -470,31 +474,40 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
 
       </div>
 
+      {/* 🖨️ สไตล์สำหรับการพิมพ์กระดาษ A4 (ลบสีพื้นหลังสีเทาออก 100%) */}
       <style>{`
         @media print {
-          /* 1. ซ่อน Element ทุกอย่างในหน้าเว็บก่อน */
+          html, body, #root, main, .app-container {
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
           body * {
             visibility: hidden !important;
           }
 
-          /* 2. แสดงเฉพาะส่วนเอกสาร #print-area และลูกๆ ของมัน */
           #print-area, #print-area * {
             visibility: visible !important;
           }
 
-          /* 3. จัดตำแหน่งให้เอกสารอยู่ชิดขอบบนซ้ายของกระดาษ A4 */
           #print-area {
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
             width: 100% !important;
+            min-height: 100vh !important;
             padding: 0 !important;
             margin: 0 !important;
+            background: #ffffff !important;
+            background-color: #ffffff !important;
             box-shadow: none !important;
             border: none !important;
           }
 
-          /* 4. ซ่อนแผงควบคุมหลัก */
           .no-print {
             display: none !important;
           }
