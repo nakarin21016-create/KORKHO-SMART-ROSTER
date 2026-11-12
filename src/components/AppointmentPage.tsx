@@ -5,6 +5,13 @@ export interface AppointmentType {
   name: string;
   defaultLocation: string;
   defaultPreparation: string;
+  isMultiDoseDefault?: boolean;
+}
+
+export interface AppointmentSlot {
+  label: string;
+  date: string;
+  time: string;
 }
 
 export interface AppointmentRecord {
@@ -29,19 +36,29 @@ const INITIAL_APPOINTMENT_TYPES: AppointmentType[] = [
     id: 'doctor',
     name: 'ใบนัดพบแพทย์',
     defaultLocation: 'ห้องตรวจโรคทั่วไป รพ.สต.คอโค',
-    defaultPreparation: 'นำบัตรประชาชนและยาเดิมที่รับประทานอยู่มาด้วยทุกครั้ง'
+    defaultPreparation: 'นำบัตรประชาชนและยาเดิมที่รับประทานอยู่มาด้วยทุกครั้ง',
+    isMultiDoseDefault: false
+  },
+  {
+    id: 'vaccine_dt',
+    name: 'ใบนัดฉีดวัคซีน dT (3 เข็ม)',
+    defaultLocation: 'ห้องฉีดวัคซีน/ทำแผล รพ.สต.คอโค',
+    defaultPreparation: 'นำใบนัดนี้พร้อมบัตรประชาชนมาแสดงทุกครั้งที่มารับวัคซีน',
+    isMultiDoseDefault: true
   },
   {
     id: 'vaccine',
-    name: 'ใบนัดฉีดวัคซีน',
+    name: 'ใบนัดฉีดวัคซีนทั่วไป',
     defaultLocation: 'ห้องฉีดวัคซีน/ทำแผล รพ.สต.คอโค',
-    defaultPreparation: 'นำสมุดบันทึกสุขภาพ/สมุดสีชมพู (กรณีเด็ก) มาด้วยทุกครั้ง'
+    defaultPreparation: 'นำสมุดบันทึกสุขภาพ/สมุดสีชมพู (กรณีเด็ก) มาด้วยทุกครั้ง',
+    isMultiDoseDefault: false
   },
   {
     id: 'followup',
     name: 'ใบนัดติดตามอาการ / ตรวจเจาะเลือด',
     defaultLocation: 'คลินิกโรคเรื้อรัง (NCDs) รพ.สต.คอโค',
-    defaultPreparation: 'งดน้ำและอาหารทุกชนิด หลังเวลา 20.00 น. ก่อนวันมารับการตรวจ'
+    defaultPreparation: 'งดน้ำและอาหารทุกชนิด หลังเวลา 20.00 น. ก่อนวันมารับการตรวจ',
+    isMultiDoseDefault: false
   }
 ];
 
@@ -56,9 +73,21 @@ export const AppointmentPage: React.FC = () => {
   const [appointmentTypes, setAppointmentTypes] = useState<AppointmentType[]>(INITIAL_APPOINTMENT_TYPES);
   const [selectedType, setSelectedType] = useState<string>('doctor');
 
-  // ฟิลด์สำหรับออกใบนัด
+  // โหมดนัดหลายเข็ม / หลายครั้ง
+  const [isMultiDoseMode, setIsMultiDoseMode] = useState<boolean>(false);
+  const [vaccineName, setVaccineName] = useState<string>('วัคซีนป้องกันคอตีบ-บาดพยัก (dT)');
+
+  // ฟิลด์สำหรับนัดครั้งเดียว
   const [appDate, setAppDate] = useState('');
   const [appTime, setAppTime] = useState('08:30 - 12:00 น.');
+
+  // ฟิลด์สำหรับนัดหลายเข็ม (3 เข็ม)
+  const [appointmentSlots, setAppointmentSlots] = useState<AppointmentSlot[]>([
+    { label: 'เข็มที่ 1', date: new Date().toISOString().split('T')[0], time: '08:30 - 12:00 น.' },
+    { label: 'เข็มที่ 2 (ห่าง 1 เดือน)', date: '', time: '08:30 - 12:00 น.' },
+    { label: 'เข็มที่ 3 (ห่าง 6 เดือน)', date: '', time: '08:30 - 12:00 น.' }
+  ]);
+
   const [location, setLocation] = useState(INITIAL_APPOINTMENT_TYPES[0].defaultLocation);
   const [preparation, setPreparation] = useState(INITIAL_APPOINTMENT_TYPES[0].defaultPreparation);
   const [doctorOrStaff, setDoctorOrStaff] = useState('เจ้าหน้าที่ รพ.สต.คอโค');
@@ -76,8 +105,9 @@ export const AppointmentPage: React.FC = () => {
   const [newTypeName, setNewTypeName] = useState('');
   const [newTypeLoc, setNewTypeLoc] = useState('');
   const [newTypePrep, setNewTypePrep] = useState('');
+  const [newTypeMulti, setNewTypeMulti] = useState(false);
 
-  // รายการประวัติใบนัดหมาย (สำหรับหน้าค้นหา/ตารางนัดประจำวัน)
+  // รายการประวัติใบนัดหมาย
   const [appointmentsList, setAppointmentsList] = useState<AppointmentRecord[]>([]);
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -89,7 +119,48 @@ export const AppointmentPage: React.FC = () => {
     if (found) {
       setLocation(found.defaultLocation);
       setPreparation(found.defaultPreparation);
+      setIsMultiDoseMode(!!found.isMultiDoseDefault);
     }
+  };
+
+  // คำนวณวันนัด dT อัตโนมัติ (0, +1 เดือน, +6 เดือน จากเข็มที่ 1)
+  const autoCalculateDtDates = () => {
+    const firstDateStr = appointmentSlots[0]?.date;
+    if (!firstDateStr) {
+      alert('กรุณาระบุวันที่ของ เข็มที่ 1 ก่อนครับ');
+      return;
+    }
+    const baseDate = new Date(firstDateStr);
+    
+    const dose2 = new Date(baseDate);
+    dose2.setMonth(dose2.getMonth() + 1);
+
+    const dose3 = new Date(baseDate);
+    dose3.setMonth(dose3.getMonth() + 6);
+
+    setAppointmentSlots([
+      { ...appointmentSlots[0], date: firstDateStr },
+      { label: 'เข็มที่ 2 (ห่าง 1 เดือน)', date: dose2.toISOString().split('T')[0], time: appointmentSlots[1]?.time || '08:30 - 12:00 น.' },
+      { label: 'เข็มที่ 3 (ห่าง 6 เดือน)', date: dose3.toISOString().split('T')[0], time: appointmentSlots[2]?.time || '08:30 - 12:00 น.' }
+    ]);
+  };
+
+  const handleAddSlot = () => {
+    setAppointmentSlots([
+      ...appointmentSlots,
+      { label: `เข็มที่ ${appointmentSlots.length + 1}`, date: '', time: '08:30 - 12:00 น.' }
+    ]);
+  };
+
+  const handleRemoveSlot = (index: number) => {
+    if (appointmentSlots.length <= 1) return;
+    setAppointmentSlots(appointmentSlots.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateSlot = (index: number, field: keyof AppointmentSlot, value: string) => {
+    const updated = [...appointmentSlots];
+    updated[index] = { ...updated[index], [field]: value };
+    setAppointmentSlots(updated);
   };
 
   // ค้นหาผู้ป่วยจาก HOSxP API Bridge
@@ -128,63 +199,90 @@ export const AppointmentPage: React.FC = () => {
       id: `custom_${Date.now()}`,
       name: newTypeName.trim(),
       defaultLocation: newTypeLoc.trim() || 'รพ.สต.คอโค',
-      defaultPreparation: newTypePrep.trim() || 'นำบัตรประชาชนและเอกสารที่เกี่ยวข้องมาด้วยทุกครั้ง'
+      defaultPreparation: newTypePrep.trim() || 'นำบัตรประชาชนและเอกสารที่เกี่ยวข้องมาด้วยทุกครั้ง',
+      isMultiDoseDefault: newTypeMulti
     };
     const updated = [...appointmentTypes, newType];
     setAppointmentTypes(updated);
     setSelectedType(newType.id);
     setLocation(newType.defaultLocation);
     setPreparation(newType.defaultPreparation);
+    setIsMultiDoseMode(newTypeMulti);
 
     setNewTypeName('');
     setNewTypeLoc('');
     setNewTypePrep('');
+    setNewTypeMulti(false);
     setShowAddTypeModal(false);
   };
 
-  // 💾 บันทึกใบนัดลงฐานข้อมูล
+  // 💾 บันทึกใบนัดลงฐานข้อมูล (รองรับทั้งแบบเดี่ยวและแบบหลายเข็ม)
   const handleSaveAndPrint = async () => {
-    if (!patient.name || !appDate) {
-      alert('กรุณาระบุข้อมูลผู้ป่วย และ วันที่นัดหมาย ให้ครบถ้วน');
+    if (!patient.name) {
+      alert('กรุณาระบุชื่อ-สกุลผู้ป่วยให้ครบถ้วน');
       return;
     }
 
-    setSaveLoading(true);
     const currentTypeObj = appointmentTypes.find(t => t.id === selectedType);
+    const recordsToSave: AppointmentRecord[] = [];
 
-    const recordData: AppointmentRecord = {
-      hn: patient.hn,
-      cid: patient.cid,
-      patient_name: patient.name,
-      age: patient.age,
-      phone: patient.phone,
-      appointment_type_id: selectedType,
-      appointment_type_name: currentTypeObj?.name || 'ใบนัดหมาย',
-      appointment_date: appDate,
-      appointment_time: appTime,
-      location: location,
-      preparation: preparation,
-      doctor_or_staff: doctorOrStaff
-    };
-
-    try {
-      // ยิง API บันทึกลงระบบ Backend (ปรับ endpoint ตามระบบที่ใช้งานจริง เช่น Supabase / Local API)
-      const res = await fetch('http://localhost:3001/api/appointments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(recordData)
-      });
-
-      if (!res.ok) {
-        console.warn('API Save warning: ไม่สามารถส่งบันทึกผ่าน API ได้ แต่จะสั่งพิมพ์ต่อ');
-      } else {
-        setStatusMessage({ type: 'success', text: 'บันทึกประวัติการนัดหมายลงฐานข้อมูลเรียบร้อยแล้ว' });
+    if (isMultiDoseMode) {
+      const validSlots = appointmentSlots.filter(s => s.date);
+      if (validSlots.length === 0) {
+        alert('กรุณาระบุวันที่นัดหมายอย่างน้อย 1 เข็ม');
+        return;
       }
+      validSlots.forEach(slot => {
+        recordsToSave.push({
+          hn: patient.hn,
+          cid: patient.cid,
+          patient_name: patient.name,
+          age: patient.age,
+          phone: patient.phone,
+          appointment_type_id: selectedType,
+          appointment_type_name: `${currentTypeObj?.name || 'ใบนัดวัคซีน'} (${vaccineName} - ${slot.label})`,
+          appointment_date: slot.date,
+          appointment_time: slot.time,
+          location,
+          preparation,
+          doctor_or_staff: doctorOrStaff
+        });
+      });
+    } else {
+      if (!appDate) {
+        alert('กรุณาระบุวันที่นัดหมาย');
+        return;
+      }
+      recordsToSave.push({
+        hn: patient.hn,
+        cid: patient.cid,
+        patient_name: patient.name,
+        age: patient.age,
+        phone: patient.phone,
+        appointment_type_id: selectedType,
+        appointment_type_name: currentTypeObj?.name || 'ใบนัดหมาย',
+        appointment_date: appDate,
+        appointment_time: appTime,
+        location,
+        preparation,
+        doctor_or_staff: doctorOrStaff
+      });
+    }
+
+    setSaveLoading(true);
+    try {
+      for (const rec of recordsToSave) {
+        await fetch('http://localhost:3001/api/appointments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(rec)
+        });
+      }
+      setStatusMessage({ type: 'success', text: `บันทึกประวัตินัดหมายลงฐานข้อมูลเรียบร้อย (${recordsToSave.length} รายการ)` });
     } catch (err) {
       console.error('Save to DB Error:', err);
     } finally {
       setSaveLoading(false);
-      // สั่งพิมพ์เอกสาร A5
       setTimeout(() => {
         window.print();
       }, 300);
@@ -211,6 +309,15 @@ export const AppointmentPage: React.FC = () => {
   }, [activeTab, filterDate]);
 
   const currentTypeObj = appointmentTypes.find(t => t.id === selectedType);
+
+  const formatThaiDate = (dateStr: string) => {
+    if (!dateStr) return '.........................................';
+    return new Date(dateStr).toLocaleDateString('th-TH', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px', fontFamily: 'Sarabun, sans-serif' }}>
@@ -261,19 +368,39 @@ export const AppointmentPage: React.FC = () => {
               <label style={{ display: 'block', fontWeight: 'bold', fontSize: '13px', color: '#334155', marginBottom: '6px' }}>
                 เลือกประเภทใบนัดหมาย
               </label>
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <select
                   value={selectedType}
                   onChange={(e) => handleTypeChange(e.target.value)}
-                  style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+                  style={{ flex: 1, minWidth: '220px', padding: '10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
                 >
                   {appointmentTypes.map(t => (
                     <option key={t.id} value={t.id}>{t.name}</option>
                   ))}
                 </select>
+
+                {/* 🔘 ปุ่มสลับโหมดนัดฉีดวัคซีนหลายเข็ม */}
                 <button
+                  type="button"
+                  onClick={() => setIsMultiDoseMode(!isMultiDoseMode)}
+                  style={{
+                    backgroundColor: isMultiDoseMode ? '#7c3aed' : '#f1f5f9',
+                    color: isMultiDoseMode ? '#ffffff' : '#334155',
+                    border: isMultiDoseMode ? 'none' : '1px solid #cbd5e1',
+                    padding: '0 14px',
+                    borderRadius: '8px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    fontSize: '13px'
+                  }}
+                >
+                  💉 {isMultiDoseMode ? 'โหมดนัดหลายเข็ม (เปิดอยู่)' : 'สลับโหมดนัดหลายเข็ม (dT 3 เข็ม)'}
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setShowAddTypeModal(true)}
-                  style={{ backgroundColor: '#0284c7', color: '#ffffff', border: 'none', padding: '0 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}
+                  style={{ backgroundColor: '#0284c7', color: '#ffffff', border: 'none', padding: '0 14px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}
                 >
                   ➕ เพิ่มประเภทใบนัด
                 </button>
@@ -327,17 +454,88 @@ export const AppointmentPage: React.FC = () => {
               </div>
             </div>
 
-            {/* รายละเอียดนัดหมาย */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>วันที่นัดหมาย *</label>
-                <input type="date" value={appDate} onChange={(e) => setAppDate(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+            {/* รายละเอียดวันนัด: แยกแสดงผลระหว่าง "นัดครั้งเดียว" กับ "นัดหลายเข็ม" */}
+            {!isMultiDoseMode ? (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>วันที่นัดหมาย *</label>
+                  <input type="date" value={appDate} onChange={(e) => setAppDate(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>เวลานัดหมาย</label>
+                  <input type="text" value={appTime} onChange={(e) => setAppTime(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+                </div>
               </div>
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>เวลานัดหมาย</label>
-                <input type="text" value={appTime} onChange={(e) => setAppTime(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+            ) : (
+              <div style={{ backgroundColor: '#f5f3ff', border: '1px solid #ddd6fe', padding: '14px', borderRadius: '8px', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+                  <span style={{ fontWeight: 'bold', fontSize: '13px', color: '#5b21b6' }}>💉 กำหนดการนัดฉีดวัคซีนหลายเข็ม</span>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={autoCalculateDtDates}
+                      style={{ backgroundColor: '#7c3aed', color: '#fff', border: 'none', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      ⚡ คำนวณวันนัด dT อัตโนมัติ (0, 1, 6 เดือน)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAddSlot}
+                      style={{ backgroundColor: '#ffffff', color: '#5b21b6', border: '1px solid #c4b5fd', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      ➕ เพิ่มเข็ม
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '10px' }}>
+                  <label style={{ fontSize: '12px', color: '#5b21b6', fontWeight: 'bold' }}>ชื่อวัคซีน / รายการฉีด</label>
+                  <input
+                    type="text"
+                    value={vaccineName}
+                    onChange={(e) => setVaccineName(e.target.value)}
+                    placeholder="เช่น วัคซีนป้องกันคอตีบ-บาดพยัก (dT)"
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: '6px', border: '1px solid #c4b5fd', boxSizing: 'border-box', marginTop: '3px' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {appointmentSlots.map((slot, index) => (
+                    <div key={index} style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 2fr auto', gap: '8px', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        value={slot.label}
+                        onChange={(e) => handleUpdateSlot(index, 'label', e.target.value)}
+                        placeholder="เช่น เข็มที่ 1"
+                        style={{ padding: '7px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                      />
+                      <input
+                        type="date"
+                        value={slot.date}
+                        onChange={(e) => handleUpdateSlot(index, 'date', e.target.value)}
+                        style={{ padding: '7px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                      />
+                      <input
+                        type="text"
+                        value={slot.time}
+                        onChange={(e) => handleUpdateSlot(index, 'time', e.target.value)}
+                        style={{ padding: '7px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                      />
+                      {appointmentSlots.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSlot(index)}
+                          style={{ backgroundColor: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '6px', padding: '7px 10px', cursor: 'pointer', fontWeight: 'bold' }}
+                          title="ลบรายการนี้"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             <div style={{ marginBottom: '12px' }}>
               <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>สถานที่รับบริการ</label>
@@ -425,15 +623,21 @@ export const AppointmentPage: React.FC = () => {
             <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>➕ เพิ่มประเภทใบนัดหมายใหม่</h3>
             <div style={{ marginBottom: '12px' }}>
               <label style={{ display: 'block', fontSize: '13px', marginBottom: '4px' }}>ชื่อประเภทใบนัด</label>
-              <input type="text" placeholder="เช่น ใบนัดตรวจฟัน / ใบนัดกายภาพ" value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+              <input type="text" placeholder="เช่น ใบนัดฉีดวัคซีนพิษสุนัขบ้า" value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
             </div>
             <div style={{ marginBottom: '12px' }}>
               <label style={{ display: 'block', fontSize: '13px', marginBottom: '4px' }}>สถานที่นัดเริ่มต้น</label>
-              <input type="text" placeholder="เช่น ห้องทันตกรรม รพ.สต.คอโค" value={newTypeLoc} onChange={(e) => setNewTypeLoc(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+              <input type="text" placeholder="เช่น ห้องฉีดวัคซีน รพ.สต.คอโค" value={newTypeLoc} onChange={(e) => setNewTypeLoc(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ display: 'block', fontSize: '13px', marginBottom: '4px' }}>คำแนะนำการเตรียมตัวเริ่มต้น</label>
+              <textarea rows={2} placeholder="เช่น นำใบนัดพร้อมบัตรประชาชนมาด้วย" value={newTypePrep} onChange={(e) => setNewTypePrep(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
             </div>
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '13px', marginBottom: '4px' }}>คำแนะนำการเตรียมตัวเริ่มต้น</label>
-              <textarea rows={2} placeholder="เช่น แปรงฟันให้สะอาดก่อนมาตามนัด" value={newTypePrep} onChange={(e) => setNewTypePrep(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+                <input type="checkbox" checked={newTypeMulti} onChange={(e) => setNewTypeMulti(e.target.checked)} />
+                เปิดใช้งานตารางนัดหลายเข็ม/หลายครั้งเป็นค่าเริ่มต้น
+              </label>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
               <button onClick={() => setShowAddTypeModal(false)} style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#f1f5f9', cursor: 'pointer' }}>ยกเลิก</button>
@@ -446,47 +650,73 @@ export const AppointmentPage: React.FC = () => {
       {/* 📄 เอกสารใบนัดทางการ ขนาด A5 สำหรับสั่งพิมพ์ */}
       <div id="print-area" style={{
         backgroundColor: '#ffffff',
-        padding: '24px 30px',
+        padding: '22px 28px',
         border: '1px solid #000000',
         fontFamily: "'TH Sarabun PSK', Sarabun, sans-serif",
         fontSize: '18px',
-        lineHeight: '1.5',
+        lineHeight: '1.45',
         boxSizing: 'border-box'
       }}>
-        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '24px', marginBottom: '4px' }}>
+        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '23px', marginBottom: '2px' }}>
           {currentTypeObj?.name || 'ใบนัดหมายผู้ป่วย'}
         </div>
-        <div style={{ textAlign: 'center', fontSize: '16px', marginBottom: '10px' }}>
+        <div style={{ textAlign: 'center', fontSize: '16px', marginBottom: '8px' }}>
           โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค อำเภอเมืองสุรินทร์ จังหวัดสุรินทร์
         </div>
 
-        <div style={{ borderTop: '1px solid #000000', margin: '8px 0' }}></div>
+        <div style={{ borderTop: '1px solid #000000', margin: '6px 0' }}></div>
 
         <div>
-          <p style={{ margin: '4px 0' }}>
+          <p style={{ margin: '3px 0' }}>
             <strong>ผู้ป่วย:</strong> {patient.name || '......................................................................'} &nbsp;&nbsp;
             <strong>HN:</strong> {patient.hn || '............'} &nbsp;&nbsp;
             <strong>อายุ:</strong> {patient.age || '......'} ปี
           </p>
-          {patient.phone && <p style={{ margin: '4px 0' }}><strong>เบอร์โทรศัพท์:</strong> {patient.phone}</p>}
+          {patient.phone && <p style={{ margin: '3px 0' }}><strong>เบอร์โทรศัพท์:</strong> {patient.phone}</p>}
 
-          <div style={{ border: '1px solid #000000', padding: '10px 14px', borderRadius: '4px', margin: '10px 0', backgroundColor: '#fafafa' }}>
-            <p style={{ margin: '2px 0', fontSize: '20px', fontWeight: 'bold' }}>
-              📅 วันที่นัดหมาย: {appDate ? new Date(appDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }) : '.........................................................'}
-            </p>
-            <p style={{ margin: '2px 0' }}><strong>⏰ เวลา:</strong> {appTime}</p>
-            <p style={{ margin: '2px 0' }}><strong>📍 สถานที่:</strong> {location}</p>
-          </div>
+          {/* สลับรูปแบบการพิมพ์ระหว่าง นัดครั้งเดียว vs ตารางนัดหลายเข็ม */}
+          {!isMultiDoseMode ? (
+            <div style={{ border: '1px solid #000000', padding: '10px 14px', borderRadius: '4px', margin: '8px 0', backgroundColor: '#fafafa' }}>
+              <p style={{ margin: '2px 0', fontSize: '19px', fontWeight: 'bold' }}>
+                📅 วันที่นัดหมาย: {appDate ? new Date(appDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }) : '.........................................................'}
+              </p>
+              <p style={{ margin: '2px 0' }}><strong>⏰ เวลา:</strong> {appTime}</p>
+              <p style={{ margin: '2px 0' }}><strong>📍 สถานที่:</strong> {location}</p>
+            </div>
+          ) : (
+            <div style={{ margin: '8px 0' }}>
+              <p style={{ margin: '2px 0 6px 0', fontWeight: 'bold' }}>💉 รายการวัคซีน: {vaccineName}</p>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '16px', marginBottom: '6px' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f1f5f9' }}>
+                    <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'left' }}>ครั้งที่ / เข็มที่</th>
+                    <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'left' }}>วันที่นัดหมาย</th>
+                    <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center' }}>เวลานัด</th>
+                    <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center', width: '90px' }}>ผู้ฉีด/บันทึก</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {appointmentSlots.map((slot, i) => (
+                    <tr key={i}>
+                      <td style={{ border: '1px solid #000', padding: '4px 6px', fontWeight: 'bold' }}>{slot.label}</td>
+                      <td style={{ border: '1px solid #000', padding: '4px 6px' }}>{formatThaiDate(slot.date)}</td>
+                      <td style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center' }}>{slot.time}</td>
+                      <td style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center' }}>[ &nbsp; ] ฉีดแล้ว</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p style={{ margin: '2px 0' }}><strong>📍 สถานที่รับบริการ:</strong> {location}</p>
+            </div>
+          )}
 
-          <p style={{ margin: '4px 0' }}><strong>📝 การเตรียมตัวก่อนมาตามนัด:</strong></p>
-          <p style={{ margin: '2px 0 10px 1.5em' }}>{preparation || '-'}</p>
+          <p style={{ margin: '4px 0' }}><strong>📝 การเตรียมตัว / คำแนะนำ:</strong> {preparation || '-'}</p>
         </div>
 
-        <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '14px' }}>
+        <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '14px' }}>
           <div>
             <p style={{ margin: 0 }}>* กรุณานำใบนัดนี้พร้อมบัตรประชาชนมาแสดงทุกครั้งที่มาตามนัด</p>
             <p style={{ margin: 0 }}>* หากไม่สามารถมาตามนัดได้ กรุณาแจ้งล่วงหน้า (รพ.สต.คอโค)</p>
-            <p style={{ margin: 0 }}>* โทร 085-3566955, 0619355154, 0817937798</p>
           </div>
           <div style={{ textAlign: 'center' }}>
             <p style={{ margin: 0 }}>ลงชื่อ .....................................................</p>
@@ -520,7 +750,7 @@ export const AppointmentPage: React.FC = () => {
             left: 0 !important;
             top: 0 !important;
             width: 100% !important;
-            padding: 10mm 15mm !important;
+            padding: 8mm 12mm !important;
             margin: 0 !important;
             border: none !important;
             box-shadow: none !important;
@@ -532,7 +762,7 @@ export const AppointmentPage: React.FC = () => {
 
           @page {
             size: A5 portrait;
-            margin: 10mm;
+            margin: 8mm;
           }
         }
       `}</style>
