@@ -507,6 +507,39 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
 
+  // รายการข้อมูลทั้งหมดตามเมนู Sidebar
+  const [exportOptions, setExportOptions] = useState({
+    staff: true,          // 1. จัดการบุคลากร
+    roster: true,         // 2. จัดตารางเวร
+    compensation: true,   // 3. ค่าตอบแทน & ใบเบิกเอกสาร
+    medicalCert: true,    // 4. ประวัติใบรับรองการตรวจ
+    appointments: true,   // 5. ประวัติใบนัดหมายผู้ป่วย
+    workSummary: true,    // 6. สรุปผลการปฏิบัติงาน
+  })
+
+  const [startDate, setStartDate] = useState<string>(() => {
+    const d = new Date()
+    d.setDate(1)
+    return d.toISOString().split('T')[0]
+  })
+  const [endDate, setEndDate] = useState<string>(() => new Date().toISOString().split('T')[0])
+  const [useAllDates, setUseAllDates] = useState<boolean>(false)
+  const [exporting, setExporting] = useState<boolean>(false)
+
+  const isAllSelected = Object.values(exportOptions).every(Boolean)
+
+  function toggleSelectAll() {
+    const nextVal = !isAllSelected
+    setExportOptions({
+      staff: nextVal,
+      roster: nextVal,
+      compensation: nextVal,
+      medicalCert: nextVal,
+      appointments: nextVal,
+      workSummary: nextVal,
+    })
+  }
+
   function handleSaveSettings(e: FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -516,8 +549,218 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
     }, 400)
   }
 
-  function exportBackup() {
-    alert('ส่งออกข้อมูลสำรองระบบ (CSV) เรียบร้อยแล้ว')
+  // แปลงข้อมูลเป็น CSV รองรับภาษาไทยใน Excel (UTF-8 with BOM)
+  function downloadCSV(filename: string, rows: Record<string, any>[]) {
+    if (!rows || rows.length === 0) return false
+    const headers = Object.keys(rows[0])
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row =>
+        headers.map(fieldName => {
+          const val = row[fieldName] ?? ''
+          const escaped = String(val).replace(/"/g, '""')
+          return `"${escaped}"`
+        }).join(',')
+      )
+    ].join('\r\n')
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', filename)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    return true
+  }
+
+  // ดึงข้อมูลจาก Supabase พร้อมกรองวันที่อัตโนมัติ (รองรับหลายชื่อคอลัมน์วันที่)
+  async function fetchSupabaseWithDateFilter(tableName: string, dateColumns: string[]) {
+    if (!supabase) return []
+    const { data, error } = await supabase.from(tableName).select('*')
+    if (error || !data) return []
+    if (useAllDates) return data
+
+    return data.filter((row: any) => {
+      const col = dateColumns.find(c => row[c] !== undefined && row[c] !== null)
+      if (!col) return true // หากตารางไม่มีคอลัมน์วันที่ ให้ส่งออกทั้งหมด
+      const rowDate = String(row[col]).split('T')[0]
+      return rowDate >= startDate && rowDate <= endDate
+    })
+  }
+
+  async function handleExportBackup() {
+    if (!Object.values(exportOptions).some(Boolean)) {
+      setMsg({ text: 'กรุณาติ๊กเลือกข้อมูลที่ต้องการส่งออกอย่างน้อย 1 รายการ', type: 'error' })
+      return
+    }
+    if (!useAllDates && startDate > endDate) {
+      setMsg({ text: 'วันที่เริ่มต้นต้องไม่มากกว่าวันที่สิ้นสุด', type: 'error' })
+      return
+    }
+
+    setExporting(true)
+    setMsg(null)
+    const dateTag = useAllDates ? 'ALL' : `${startDate}_to_${endDate}`
+    let exportedFiles: string[] = []
+
+    try {
+      // โหลดรายชื่อบุคลากรไว้จับคู่รหัส -> ชื่อ-สกุล ในตารางเวรและใบเบิก
+      let staffMap: Record<string, any> = {}
+      let staffList: any[] = []
+      if (supabase) {
+        const { data } = await supabase.from('staff').select('*').order('display_order', { ascending: true })
+        staffList = data || []
+        staffList.forEach(s => {
+          staffMap[String(s.id)] = s
+        })
+      }
+
+      // 1. ทะเบียนบุคลากร (Staff)
+      if (exportOptions.staff && staffList.length > 0) {
+        const formattedStaff = staffList.map((s, i) => ({
+          'ลำดับ': i + 1,
+          'ชื่อ': s.first_name,
+          'นามสกุล': s.last_name,
+          'ตำแหน่ง': s.position,
+          'ประเภท': s.staff_type,
+          'อัตราเวรเช้า_บาท': s.morning_rate,
+          'อัตราเวรบ่าย_บาท': s.afternoon_rate,
+          'สถานะ': s.status === 'active' ? 'ใช้งาน' : 'ไม่ใช้งาน'
+        }))
+        if (downloadCSV(`1_บุคลากร_${dateTag}.csv`, formattedStaff)) {
+          exportedFiles.push('ทะเบียนบุคลากร')
+        }
+      }
+
+      // 2. ข้อมูลการจัดตารางเวร (Roster)
+      if (exportOptions.roster && supabase) {
+        const assignments = await fetchSupabaseWithDateFilter('duty_assignments', ['duty_date', 'date', 'created_at'])
+        if (assignments.length > 0) {
+          const formattedRoster = assignments.map((item: any) => {
+            const person = staffMap[String(item.staff_id)]
+            return {
+              'วันที่ปฏิบัติงาน': item.duty_date || item.date || '',
+              'ชื่อ-สกุล': person ? `${person.first_name} ${person.last_name}` : item.staff_id,
+              'ตำแหน่ง': person?.position || '',
+              'ช่วงเวร': item.shift_type === 'morning' ? 'เวรเช้า' : item.shift_type === 'afternoon' ? 'เวรบ่าย' : item.shift_type,
+              'หมายเหตุ': item.note || ''
+            }
+          })
+          if (downloadCSV(`2_ตารางเวร_${dateTag}.csv`, formattedRoster)) {
+            exportedFiles.push('จัดตารางเวร')
+          }
+        }
+      }
+
+      // 3. ข้อมูลค่าตอบแทนและใบเบิกเอกสาร (Compensation & Documents)
+      if (exportOptions.compensation && supabase) {
+        const assignments = await fetchSupabaseWithDateFilter('duty_assignments', ['duty_date', 'date', 'created_at'])
+        if (assignments.length > 0) {
+          // สรุปยอดรวมรายบุคคลสำหรับใบเบิกและค่าตอบแทนตามช่วงวันที่เลือก
+          const summaryByStaff: Record<string, { name: string; position: string; morningCount: number; afternoonCount: number; totalAmount: number }> = {}
+          
+          assignments.forEach((item: any) => {
+            const sid = String(item.staff_id)
+            const person = staffMap[sid]
+            if (!summaryByStaff[sid]) {
+              summaryByStaff[sid] = {
+                name: person ? `${person.first_name} ${person.last_name}` : sid,
+                position: person?.position || '-',
+                morningCount: 0,
+                afternoonCount: 0,
+                totalAmount: 0
+              }
+            }
+            const mRate = Number(person?.morning_rate || orgConfig.defaultMorningRate || 0)
+            const aRate = Number(person?.afternoon_rate || orgConfig.defaultAfternoonRate || 0)
+
+            if (item.shift_type === 'morning' || item.shift_type === 'เช้า') {
+              summaryByStaff[sid].morningCount += 1
+              summaryByStaff[sid].totalAmount += mRate
+            } else if (item.shift_type === 'afternoon' || item.shift_type === 'บ่าย') {
+              summaryByStaff[sid].afternoonCount += 1
+              summaryByStaff[sid].totalAmount += aRate
+            }
+          })
+
+          const formattedComp = Object.values(summaryByStaff).map((row, idx) => ({
+            'ลำดับ': idx + 1,
+            'ชื่อ-สกุล': row.name,
+            'ตำแหน่ง': row.position,
+            'จำนวนเวรเช้า_ครั้ง': row.morningCount,
+            'จำนวนเวรบ่าย_ครั้ง': row.afternoonCount,
+            'รวมวันปฏิบัติงาน': row.morningCount + row.afternoonCount,
+            'รวมเงินค่าตอบแทน_บาท': row.totalAmount
+          }))
+
+          if (downloadCSV(`3_ใบเบิกและค่าตอบแทน_${dateTag}.csv`, formattedComp)) {
+            exportedFiles.push('ใบเบิกและค่าตอบแทน')
+          }
+        }
+      }
+
+      // 4. ประวัติใบรับรองการตรวจ (Medical Certificates - เช็กทั้ง Supabase และ Local API)
+      if (exportOptions.medicalCert) {
+        let certRows = await fetchSupabaseWithDateFilter('medical_certificates', ['vstdate', 'issue_date', 'created_at'])
+        if (certRows.length === 0) {
+          try {
+            const params = useAllDates ? 'all=true' : `start=${startDate}&end=${endDate}`
+            const res = await fetch(`http://localhost:3001/api/medical-certs/export?${params}`)
+            if (res.ok) certRows = await res.json()
+          } catch {}
+        }
+        if (certRows.length > 0 && downloadCSV(`4_ใบรับรองการตรวจ_${dateTag}.csv`, certRows)) {
+          exportedFiles.push('ใบรับรองการตรวจ')
+        }
+      }
+
+      // 5. ประวัติการออกใบนัดหมายผู้ป่วย (Appointments - เช็กทั้ง Local API และ Supabase)
+      if (exportOptions.appointments) {
+        let appRows: any[] = []
+        try {
+          const params = useAllDates ? 'all=true' : `start=${startDate}&end=${endDate}`
+          const res = await fetch(`http://localhost:3001/api/appointments/export?${params}`)
+          if (res.ok) appRows = await res.json()
+        } catch {}
+
+        if (appRows.length === 0) {
+          appRows = await fetchSupabaseWithDateFilter('appointments', ['appointment_date', 'created_at'])
+        }
+        if (appRows.length > 0 && downloadCSV(`5_ใบนัดหมายผู้ป่วย_${dateTag}.csv`, appRows)) {
+          exportedFiles.push('ใบนัดหมายผู้ป่วย')
+        }
+      }
+
+      // 6. สรุปผลการปฏิบัติงาน (Work Summary)
+      if (exportOptions.workSummary && supabase) {
+        let sumRows = await fetchSupabaseWithDateFilter('work_summaries', ['work_date', 'report_date', 'created_at'])
+        if (sumRows.length === 0) {
+          sumRows = await fetchSupabaseWithDateFilter('work_logs', ['work_date', 'date', 'created_at'])
+        }
+        if (sumRows.length > 0 && downloadCSV(`6_สรุปผลการปฏิบัติงาน_${dateTag}.csv`, sumRows)) {
+          exportedFiles.push('สรุปผลการปฏิบัติงาน')
+        }
+      }
+
+      if (exportedFiles.length > 0) {
+        setMsg({
+          text: `ส่งออกข้อมูลสำเร็จ ${exportedFiles.length} หมวดหมู่ (${exportedFiles.join(', ')})`,
+          type: 'success'
+        })
+      } else {
+        setMsg({
+          text: 'ไม่พบข้อมูลในช่วงวันที่ที่เลือก (ลองติ๊ก "ข้อมูลทั้งหมด" เพื่อส่งออกข้อมูลทั้งหมดที่มีในระบบ)',
+          type: 'error'
+        })
+      }
+    } catch (err: any) {
+      setMsg({ text: 'เกิดข้อผิดพลาดระหว่างส่งออกข้อมูล: ' + (err.message || ''), type: 'error' })
+    } finally {
+      setExporting(false)
+    }
   }
 
   return (
@@ -538,7 +781,7 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }} className="no-print">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }} className="no-print">
         <form onSubmit={handleSaveSettings} className="panel" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '20px', border: '1px solid #cbd5e1' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Building size={18} /> ข้อมูลสถานพยาบาล / หน่วยงาน
@@ -547,24 +790,24 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
               ชื่อสถานพยาบาล:
-              <input value={orgConfig.hospitalName} onChange={e => setOrgConfig({ ...orgConfig, hospitalName: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px' }} />
+              <input value={orgConfig.hospitalName} onChange={e => setOrgConfig({ ...orgConfig, hospitalName: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px', boxSizing: 'border-box' }} />
             </label>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
                 อำเภอ:
-                <input value={orgConfig.district} onChange={e => setOrgConfig({ ...orgConfig, district: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px' }} />
+                <input value={orgConfig.district} onChange={e => setOrgConfig({ ...orgConfig, district: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px', boxSizing: 'border-box' }} />
               </label>
 
               <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
                 จังหวัด:
-                <input value={orgConfig.province} onChange={e => setOrgConfig({ ...orgConfig, province: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px' }} />
+                <input value={orgConfig.province} onChange={e => setOrgConfig({ ...orgConfig, province: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px', boxSizing: 'border-box' }} />
               </label>
             </div>
 
             <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
               รหัสหน่วยงาน (HCODE):
-              <input value={orgConfig.hospitalCode} onChange={e => setOrgConfig({ ...orgConfig, hospitalCode: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px' }} />
+              <input value={orgConfig.hospitalCode} onChange={e => setOrgConfig({ ...orgConfig, hospitalCode: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px', boxSizing: 'border-box' }} />
             </label>
           </div>
 
@@ -577,12 +820,12 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
             <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
               เวรเช้า (บาท/ครั้ง):
-              <input type="number" value={orgConfig.defaultMorningRate} onChange={e => setOrgConfig({ ...orgConfig, defaultMorningRate: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px' }} />
+              <input type="number" value={orgConfig.defaultMorningRate} onChange={e => setOrgConfig({ ...orgConfig, defaultMorningRate: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px', boxSizing: 'border-box' }} />
             </label>
 
             <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
               เวรบ่าย (บาท/ครั้ง):
-              <input type="number" value={orgConfig.defaultAfternoonRate} onChange={e => setOrgConfig({ ...orgConfig, defaultAfternoonRate: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px' }} />
+              <input type="number" value={orgConfig.defaultAfternoonRate} onChange={e => setOrgConfig({ ...orgConfig, defaultAfternoonRate: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px', boxSizing: 'border-box' }} />
             </label>
           </div>
 
@@ -610,26 +853,102 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
             </div>
           </div>
 
+          {/* กล่องสำรองข้อมูลครอบคลุมทุกเมนูใน Sidebar */}
           <div className="panel" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '20px', border: '1px solid #cbd5e1' }}>
             <h3 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Database size={18} /> สำรองข้อมูล & ฐานข้อมูล
+              <Database size={18} /> สำรองข้อมูล & ส่งออกข้อมูลทั้งระบบ
             </h3>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', backgroundColor: '#f1f5f9', borderRadius: '6px' }}>
-                <span style={{ fontSize: '13px', fontWeight: 500 }}>ทะเบียนบุคลากรทั้งหมด</span>
-                <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#0284c7' }}>{staffCount} ราย</span>
+            {/* 1. ติ๊กเลือกส่วนงานทั้งหมดใน Sidebar */}
+            <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', paddingBottom: '6px', borderBottom: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#334155' }}>เลือกส่วนงานที่ต้องการสำรอง:</span>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 'bold', color: '#2563eb', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={isAllSelected} onChange={toggleSelectAll} />
+                  เลือกทั้งหมด (6 ส่วนงาน)
+                </label>
               </div>
 
-              <button
-                type="button"
-                onClick={exportBackup}
-                className="btn secondary"
-                style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}
-              >
-                <Download size={16} /> ส่งออกข้อมูลสำรอง (Export CSV)
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input type="checkbox" checked={exportOptions.staff} onChange={e => setExportOptions({ ...exportOptions, staff: e.target.checked })} />
+                    1. จัดการบุคลากร (รายชื่อ/ตำแหน่ง/เรทค่าเวร)
+                  </span>
+                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#0284c7' }}>{staffCount} ราย</span>
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={exportOptions.roster} onChange={e => setExportOptions({ ...exportOptions, roster: e.target.checked })} />
+                  2. จัดตารางเวร (รายละเอียดเวรรายวันรายบุคคล)
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={exportOptions.compensation} onChange={e => setExportOptions({ ...exportOptions, compensation: e.target.checked })} />
+                  3. ค่าตอบแทน & ใบเบิกเอกสาร (สรุปยอดเงินรายบุคคล)
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={exportOptions.medicalCert} onChange={e => setExportOptions({ ...exportOptions, medicalCert: e.target.checked })} />
+                  4. ใบรับรองการตรวจ (ประวัติการออกใบรับรอง)
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={exportOptions.appointments} onChange={e => setExportOptions({ ...exportOptions, appointments: e.target.checked })} />
+                  5. ออกใบนัดหมายผู้ป่วย (ประวัติใบนัด/วัคซีน)
+                </label>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={exportOptions.workSummary} onChange={e => setExportOptions({ ...exportOptions, workSummary: e.target.checked })} />
+                  6. สรุปผลการปฏิบัติงาน (รายงานผลการปฏิบัติงาน)
+                </label>
+              </div>
             </div>
+
+            {/* 2. ระบุช่วงวันที่ */}
+            <div style={{ backgroundColor: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#334155' }}>ระบุช่วงวันที่ของข้อมูล:</span>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: '#475569', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={useAllDates} onChange={e => setUseAllDates(e.target.checked)} />
+                  ข้อมูลทั้งหมด (ทุกช่วงเวลา)
+                </label>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', opacity: useAllDates ? 0.5 : 1 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11.5px', color: '#64748b', marginBottom: '3px' }}>ตั้งแต่วันที่</label>
+                  <input
+                    type="date"
+                    disabled={useAllDates}
+                    value={startDate}
+                    onChange={e => setStartDate(e.target.value)}
+                    style={{ width: '100%', padding: '7px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11.5px', color: '#64748b', marginBottom: '3px' }}>ถึงวันที่</label>
+                  <input
+                    type="date"
+                    disabled={useAllDates}
+                    value={endDate}
+                    onChange={e => setEndDate(e.target.value)}
+                    style={{ width: '100%', padding: '7px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12.5px', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleExportBackup}
+              disabled={exporting}
+              className="btn primary"
+              style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}
+            >
+              {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              {exporting ? 'กำลังรวบรวมและส่งออกข้อมูล...' : 'ส่งออกข้อมูลสำรองตามที่เลือก (CSV)'}
+            </button>
           </div>
         </div>
       </div>
