@@ -2275,7 +2275,7 @@ function LoginScreen({ onLogin, error }: { onLogin: (email:string,password:strin
   async function submit(e: FormEvent) { e.preventDefault(); setBusy(true); await onLogin(email,password); setBusy(false) }
   return <div className="login-screen"><div className="login-card">
     <div className="login-logo"><Activity size={30}/></div><div className="eyebrow">KORKHO SMART OFFICE</div>
-    <h1>เข้าสู่ระบบ</h1><p>ระบบบริหารจัดการตารางเวรและค่าตอบแทน<br/>โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค จังหวัดสุรินทร์</p>
+    <h1>เข้าสู่ระบบ</h1><p>ระบบบริหารจัดการสำนักงาน<br/>โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค จังหวัดสุรินทร์</p>
     {error && <div className="alert error">{error}</div>}
     <form onSubmit={submit}><label>อีเมล<input type="email" autoComplete="username" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com"/></label>
       <label>รหัสผ่าน<input type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)} placeholder="กรอกรหัสผ่าน"/></label>
