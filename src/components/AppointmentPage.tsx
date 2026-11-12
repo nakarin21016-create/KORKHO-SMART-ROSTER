@@ -1,5 +1,23 @@
 import React, { useState, useEffect } from 'react';
 
+export interface Staff {
+  id?: string | number;
+  name?: string;
+  fullname?: string;
+  prefix?: string;
+  pname?: string;
+  firstName?: string;
+  fname?: string;
+  first_name?: string;
+  lastName?: string;
+  lname?: string;
+  last_name?: string;
+  position?: string;
+  pos_name?: string;
+  role?: string;
+  status?: string;
+}
+
 export interface AppointmentType {
   id: string;
   name: string;
@@ -29,6 +47,10 @@ export interface AppointmentRecord {
   preparation: string;
   doctor_or_staff: string;
   created_at?: string;
+}
+
+interface AppointmentPageProps {
+  staff?: Staff[];
 }
 
 const INITIAL_APPOINTMENT_TYPES: AppointmentType[] = [
@@ -62,7 +84,7 @@ const INITIAL_APPOINTMENT_TYPES: AppointmentType[] = [
   }
 ];
 
-export const AppointmentPage: React.FC = () => {
+export const AppointmentPage: React.FC<AppointmentPageProps> = ({ staff = [] }) => {
   const [activeTab, setActiveTab] = useState<'create' | 'list'>('create');
   const [cidInput, setCidInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -90,7 +112,11 @@ export const AppointmentPage: React.FC = () => {
 
   const [location, setLocation] = useState(INITIAL_APPOINTMENT_TYPES[0].defaultLocation);
   const [preparation, setPreparation] = useState(INITIAL_APPOINTMENT_TYPES[0].defaultPreparation);
-  const [doctorOrStaff, setDoctorOrStaff] = useState('เจ้าหน้าที่ รพ.สต.คอโค');
+
+  // ส่วนเลือกผู้ลงนาม (ดรอปลิสต์จากบุคลากรในระบบ)
+  const [selectedStaffId, setSelectedStaffId] = useState<string>('');
+  const [doctorOrStaff, setDoctorOrStaff] = useState('');
+  const [officerPosition, setOfficerPosition] = useState('');
 
   const [patient, setPatient] = useState({
     hn: '',
@@ -111,6 +137,34 @@ export const AppointmentPage: React.FC = () => {
   const [appointmentsList, setAppointmentsList] = useState<AppointmentRecord[]>([]);
   const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // ดึงชื่อเต็มของบุคลากร
+  const getStaffFullName = (s: Staff) => {
+    if (s.name && s.name.trim() !== '') return s.name;
+    if (s.fullname && s.fullname.trim() !== '') return s.fullname;
+    const prefix = s.prefix || s.pname || '';
+    const firstName = s.firstName || s.fname || s.first_name || '';
+    const lastName = s.lastName || s.lname || s.last_name || '';
+    return `${prefix}${firstName} ${lastName}`.trim();
+  };
+
+  // เมื่อเลือกผู้ลงนามจาก Dropdown
+  const handleStaffChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setSelectedStaffId(value);
+
+    if (!value) {
+      setDoctorOrStaff('');
+      setOfficerPosition('');
+      return;
+    }
+
+    const found = staff.find((s, index) => String(s.id ?? index) === value);
+    if (found) {
+      setDoctorOrStaff(getStaffFullName(found));
+      setOfficerPosition(found.position || found.pos_name || found.role || '');
+    }
+  };
 
   // เปลี่ยนประเภทใบนัด
   const handleTypeChange = (typeId: string) => {
@@ -216,7 +270,7 @@ export const AppointmentPage: React.FC = () => {
     setShowAddTypeModal(false);
   };
 
-  // 💾 บันทึกใบนัดลงฐานข้อมูล (รองรับทั้งแบบเดี่ยวและแบบหลายเข็ม)
+  // บันทึกใบนัดลงฐานข้อมูล
   const handleSaveAndPrint = async () => {
     if (!patient.name) {
       alert('กรุณาระบุชื่อ-สกุลผู้ป่วยให้ครบถ้วน');
@@ -225,6 +279,7 @@ export const AppointmentPage: React.FC = () => {
 
     const currentTypeObj = appointmentTypes.find(t => t.id === selectedType);
     const recordsToSave: AppointmentRecord[] = [];
+    const signerFullText = officerPosition ? `${doctorOrStaff} (${officerPosition})` : (doctorOrStaff || 'เจ้าหน้าที่ รพ.สต.คอโค');
 
     if (isMultiDoseMode) {
       const validSlots = appointmentSlots.filter(s => s.date);
@@ -245,7 +300,7 @@ export const AppointmentPage: React.FC = () => {
           appointment_time: slot.time,
           location,
           preparation,
-          doctor_or_staff: doctorOrStaff
+          doctor_or_staff: signerFullText
         });
       });
     } else {
@@ -265,7 +320,7 @@ export const AppointmentPage: React.FC = () => {
         appointment_time: appTime,
         location,
         preparation,
-        doctor_or_staff: doctorOrStaff
+        doctor_or_staff: signerFullText
       });
     }
 
@@ -309,6 +364,7 @@ export const AppointmentPage: React.FC = () => {
   }, [activeTab, filterDate]);
 
   const currentTypeObj = appointmentTypes.find(t => t.id === selectedType);
+  const activeStaffList = staff.filter(s => !s.status || s.status === 'active');
 
   const formatThaiDate = (dateStr: string) => {
     if (!dateStr) return '.........................................';
@@ -322,7 +378,7 @@ export const AppointmentPage: React.FC = () => {
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '20px', fontFamily: 'Sarabun, sans-serif' }}>
       
-      {/* 🛠️ แผงเมนูด้านบน (ซ่อนตอนพิมพ์) */}
+      {/* แผงเมนูด้านบน (ซ่อนตอนพิมพ์) */}
       <div className="no-print" style={{ backgroundColor: '#ffffff', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', marginBottom: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #edf2f7', paddingBottom: '12px' }}>
           <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#0f172a' }}>
@@ -379,7 +435,6 @@ export const AppointmentPage: React.FC = () => {
                   ))}
                 </select>
 
-                {/* 🔘 ปุ่มสลับโหมดนัดฉีดวัคซีนหลายเข็ม */}
                 <button
                   type="button"
                   onClick={() => setIsMultiDoseMode(!isMultiDoseMode)}
@@ -542,14 +597,64 @@ export const AppointmentPage: React.FC = () => {
               <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
             </div>
 
-            <div style={{ marginBottom: '12px' }}>
+            <div style={{ marginBottom: '14px' }}>
               <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>การเตรียมตัวก่อนมาตามนัด</label>
               <textarea rows={2} value={preparation} onChange={(e) => setPreparation(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
             </div>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '12px', fontWeight: 'bold', color: '#334155' }}>ผู้นัด / ผู้ลงนาม</label>
-              <input type="text" value={doctorOrStaff} onChange={(e) => setDoctorOrStaff(e.target.value)} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }} />
+            {/* ส่วนเลือกผู้นัด / ผู้ลงนาม (Dropdown จากบุคลากรในระบบ + แก้ไขเองได้) */}
+            <div style={{ backgroundColor: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#334155', marginBottom: '6px' }}>
+                🖊️ เลือกผู้นัด / ผู้ลงนาม (จากข้อมูลบุคลากรในระบบ)
+              </label>
+              <select
+                value={selectedStaffId}
+                onChange={handleStaffChange}
+                style={{
+                  width: '100%',
+                  padding: '9px 12px',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  backgroundColor: '#ffffff',
+                  marginBottom: '10px'
+                }}
+              >
+                <option value="">-- กรุณาเลือกผู้นัด / ผู้ลงนาม --</option>
+                {activeStaffList.map((s, index) => {
+                  const idVal = String(s.id ?? index);
+                  const displayName = getStaffFullName(s);
+                  const pos = s.position || s.pos_name || s.role;
+                  return (
+                    <option key={idVal} value={idVal}>
+                      {displayName}{pos ? ` (${pos})` : ''}
+                    </option>
+                  );
+                })}
+              </select>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '3px' }}>ชื่อ-สกุล ผู้ลงนาม (แก้ไขเพิ่มเติมได้)</label>
+                  <input
+                    type="text"
+                    value={doctorOrStaff}
+                    placeholder="ระบุชื่อผู้ลงนาม"
+                    onChange={(e) => setDoctorOrStaff(e.target.value)}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '3px' }}>ตำแหน่ง</label>
+                  <input
+                    type="text"
+                    value={officerPosition}
+                    placeholder="ระบุตำแหน่ง"
+                    onChange={(e) => setOfficerPosition(e.target.value)}
+                    style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
             </div>
 
             <div style={{ textAlign: 'right', borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
@@ -616,7 +721,7 @@ export const AppointmentPage: React.FC = () => {
         )}
       </div>
 
-      {/* ➕ Modal สำหรับสร้างประเภทใบนัดใหม่ */}
+      {/* Modal สำหรับสร้างประเภทใบนัดใหม่ */}
       {showAddTypeModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
           <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', width: '450px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
@@ -647,7 +752,7 @@ export const AppointmentPage: React.FC = () => {
         </div>
       )}
 
-      {/* 📄 เอกสารใบนัดทางการ ขนาด A5 สำหรับสั่งพิมพ์ */}
+      {/* เอกสารใบนัดทางการ ขนาด A5 สำหรับสั่งพิมพ์ */}
       <div id="print-area" style={{
         backgroundColor: '#ffffff',
         padding: '22px 28px',
@@ -718,14 +823,15 @@ export const AppointmentPage: React.FC = () => {
             <p style={{ margin: 0 }}>* กรุณานำใบนัดนี้พร้อมบัตรประชาชนมาแสดงทุกครั้งที่มาตามนัด</p>
             <p style={{ margin: 0 }}>* หากไม่สามารถมาตามนัดได้ กรุณาแจ้งล่วงหน้า (รพ.สต.คอโค)</p>
           </div>
-          <div style={{ textAlign: 'center' }}>
+          <div style={{ textAlign: 'center', lineHeight: '1.4' }}>
             <p style={{ margin: 0 }}>ลงชื่อ .....................................................</p>
-            <p style={{ margin: '2px 0 0 0' }}>( {doctorOrStaff} )</p>
+            <p style={{ margin: '2px 0 0 0' }}>( {doctorOrStaff || '.....................................................'} )</p>
+            {officerPosition && <p style={{ margin: 0, fontSize: '13px' }}>{officerPosition}</p>}
           </div>
         </div>
       </div>
 
-      {/* 🖨️ CSS สไตล์กำหนดการพิมพ์ขนาดกระดาษ A5 Portrait */}
+      {/* CSS สไตล์กำหนดการพิมพ์ขนาดกระดาษ A5 Portrait */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&family=TH+Sarabun+PSK:wght@400;700&display=swap');
 

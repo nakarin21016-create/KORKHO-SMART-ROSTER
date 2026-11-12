@@ -413,7 +413,7 @@ export default function App() {
             />
           )}
           {section === 'medical-cert' && <MedicalCertPage staff={staff} />}
-          {section === 'appointment' && <AppointmentPage />}
+          {section === 'appointment' && <AppointmentPage staff={staff} />}
           {section === 'settings' && <SettingsPage userEmail={session.user.email} userRole={userRole} staffCount={staff.length} />}
         </div>
       </main>
