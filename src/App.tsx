@@ -1483,7 +1483,7 @@ function DocumentsPage({
                             border: '1px solid #000', 
                             textAlign: 'center', 
                             fontSize: '9.5px',
-                            backgroundColor: d.isOfficialHoliday ? '#fee2e2' : d.isCustomHoliday ? '#fef3c7' : d.isWeekend ? '#e2e8f0' : 'transparent'
+                            backgroundColor: d.isOfficialHoliday ? '#e0f2fe' : d.isCustomHoliday ? '#fef3c7' : d.isWeekend ? '#e2e8f0' : 'transparent'
                           }}
                         >
                           {row.activeDays.includes(d.day) ? '/' : ''}
@@ -2306,7 +2306,7 @@ function RosterCalendarPage({
                               border: '1px solid #cbd5e1',
                               padding: '6px',
                               verticalAlign: 'top',
-                              backgroundColor: cell.isOfficialHoliday ? '#fee2e2' : cell.isCustomHoliday ? '#fef3c7' : cell.isSunday ? '#fff5f5' : cell.isSaturday ? '#f0f9ff' : '#ffffff',
+                              backgroundColor: cell.isOfficialHoliday ? '#e0f2fe' : cell.isCustomHoliday ? '#fef3c7' : cell.isSunday ? '#fff5f5' : cell.isSaturday ? '#f0f9ff' : '#ffffff',
                               minHeight: '140px'
                             }}
                           >
@@ -2555,7 +2555,7 @@ function RosterCalendarPage({
                         let symbol = ''
                         let textColor = '#000000'
 
-                        let cellBg = d.isOfficialHoliday ? '#fee2e2' : d.isCustomHoliday ? '#fef3c7' : d.isSunday ? '#fee2e2' : d.isSaturday ? '#e0f2fe' : 'transparent'
+                        let cellBg = d.isOfficialHoliday ? '#e0f2fe' : d.isCustomHoliday ? '#fef3c7' : d.isSunday ? '#e0f2fe' : d.isSaturday ? '#e0f2fe' : 'transparent'
 
                         if (isMorning && isAfternoon) {
                           symbol = 'ช/บ'
