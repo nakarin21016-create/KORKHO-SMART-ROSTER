@@ -18,7 +18,7 @@
 /* 1. วันหยุดราชการ */
 .official-holiday-header,
 .official-holiday-cell {
-  background-color: #cbd5e1 !important;
+  background-color: #b6d2f5 !important;
   font-weight: bold !important;
   -webkit-print-color-adjust: exact !important;
   print-color-adjust: exact !important;
@@ -27,7 +27,7 @@
 /* 2. วันหยุดพิเศษ มติ ครม. */
 .custom-holiday-header,
 .custom-holiday-cell {
-  background-color: #cbd5e1 !important;
+  background-color: #b6d2f5 !important;
   font-weight: bold !important;
   -webkit-print-color-adjust: exact !important;
   print-color-adjust: exact !important;
@@ -36,7 +36,7 @@
 /* 3. วันเสาร์-อาทิตย์ */
 .weekend-header,
 .weekend-cell {
-  background-color: #cbd5e1 !important;
+  background-color: #b6d2f5 !important;
   font-weight: bold !important;
   -webkit-print-color-adjust: exact !important;
   print-color-adjust: exact !important;
@@ -50,7 +50,7 @@
   td.custom-holiday-cell,
   th.weekend-header,
   td.weekend-cell {
-    background-color: #cbd5e1 !important;
+    background-color: #b6d2f5 !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }

@@ -1444,7 +1444,7 @@ function DocumentsPage({
                         textAlign: 'center', 
                         width: '17px', 
                         fontSize: '9.5px',
-                        backgroundColor: d.isOfficialHoliday ? '#fca5a5' : d.isCustomHoliday ? '#fde68a' : d.isWeekend ? '#cbd5e1' : 'transparent',
+                        backgroundColor: d.isOfficialHoliday ? '#e0f2fe' : d.isCustomHoliday ? '#e0f2fe' : d.isWeekend ? '#e0f2fe' : 'transparent',
                         fontWeight: (d.isWeekend || d.isOfficialHoliday || d.isCustomHoliday) ? 'bold' : 'normal'
                       }}
                     >
