@@ -222,6 +222,26 @@ export default function App() {
     if (updateError) setError(updateError.message)
     else await loadStaff()
   }
+  async function deleteStaff(person: Staff) {
+    if (!supabase) return
+    const isConfirmed = window.confirm(
+      `ยืนยันการลบข้อมูลบุคลากร:\n"${person.first_name} ${person.last_name}" (${person.position}) ใช่หรือไม่?\n\n* หากลบแล้วข้อมูลจะหายไปจากระบบถาวร`
+    )
+    if (!isConfirmed) return
+
+    setError('')
+    const { error: deleteError } = await supabase
+      .from('staff')
+      .delete()
+      .eq('id', person.id)
+
+    if (deleteError) {
+      // กรณีติด Foreign Key (เคยถูกจัดลงตารางเวรแล้ว)
+      setError(`ไม่สามารถลบ "${person.first_name} ${person.last_name}" ได้ เนื่องจากมีประวัติอยู่ในการจัดตารางเวรย้อนหลัง (แนะนำให้กดเปลี่ยนสถานะเป็น "ไม่ใช้งาน" แทน)`)
+    } else {
+      await loadStaff()
+    }
+  }
 
   function openReorderModal() {
     setOrderedStaffList([...staff])
@@ -394,7 +414,7 @@ export default function App() {
           {error && <div className="alert error no-print"><AlertCircle size={17}/>{error}<button onClick={() => setError('')}><X size={15}/></button></div>}
           {section === 'dashboard' && <Dashboard staff={staff} onNavigate={setSection}/>}
           {section === 'staff' && <StaffPage staff={filteredStaff} allCount={staff.length} search={search} setSearch={setSearch}
-            loading={loading} onAdd={openAdd} onEdit={openEdit} onToggle={toggleStatus} onReorder={openReorderModal} isAdmin={userRole === 'admin'}/>}
+            loading={loading} onAdd={openAdd} onEdit={openEdit} onToggle={toggleStatus} onDelete={deleteStaff} onReorder={openReorderModal} isAdmin={userRole === 'admin'}/>}
           {section === 'roster' && (
             <RosterCalendarPage 
               staff={staff} 
@@ -2633,25 +2653,153 @@ function Stat({icon:Icon,label,value,note,tone}:{icon:typeof Users;label:string;
   return <div className="stat-card"><div className={`stat-icon ${tone}`}><Icon size={20}/></div><div className="stat-label">{label}</div><div className="stat-value">{value}</div><div className="stat-note">{note}</div></div>
 }
 
-function StaffPage({staff,allCount,search,setSearch,loading,onAdd,onEdit,onToggle,onReorder,isAdmin}:{staff:Staff[];allCount:number;search:string;setSearch:(s:string)=>void;loading:boolean;onAdd:()=>void;onEdit:(s:Staff)=>void;onToggle:(s:Staff)=>void;onReorder:()=>void;isAdmin:boolean}) {
-  return <><div className="page-heading no-print"><div><div className="eyebrow">STAFF MANAGEMENT</div><h1>จัดการบุคลากร</h1><p>ทะเบียนบุคลากรและอัตราค่าตอบแทนรายบุคคล</p></div>
-    <div style={{ display: 'flex', gap: '8px' }}>
-      {isAdmin && (
-        <button className="btn secondary" onClick={onReorder} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <ListOrdered size={18}/> จัดเรียงลำดับบุคลากร
-        </button>
-      )}
-      {isAdmin && (
-        <button className="btn primary" onClick={onAdd} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Plus size={18}/> เพิ่มบุคลากร
-        </button>
-      )}
-    </div>
-  </div>
-    <div className="panel table-panel no-print"><div className="table-toolbar"><div className="table-count">บุคลากรทั้งหมด <b>{allCount}</b> ราย</div><div className="search-box"><Search size={17}/><input placeholder="ค้นหาชื่อ ตำแหน่ง หรือรหัส..." value={search} onChange={e=>setSearch(e.target.value)}/></div></div>
-      <div className="table-wrap"><table><thead><tr><th style={{ width: '60px' }}>ลำดับ</th><th>ชื่อ-นามสกุล</th><th>ตำแหน่ง</th><th>ประเภท</th><th className="number">เวรเช้า</th><th className="number">เวรบ่าย</th><th>สถานะ</th>{isAdmin&&<th>จัดการ</th>}</tr></thead>
-      <tbody>{loading?<tr><td colSpan={8} className="empty">กำลังโหลดข้อมูล...</td></tr>:staff.length===0?<tr><td colSpan={8} className="empty"><Users size={28}/><b>ยังไม่มีข้อมูลบุคลากร</b><span>เริ่มต้นโดยเพิ่มรายชื่อบุคลากรในระบบ</span></td></tr>:staff.map((p, index)=><tr key={p.id}><td className="code" style={{ textAlign: 'center', fontWeight: 'bold', color: '#0284c7' }}>{index + 1}</td><td><b>{p.first_name} {p.last_name}</b></td><td>{p.position}</td><td>{p.staff_type}</td><td className="number">{Number(p.morning_rate).toLocaleString('th-TH')}</td><td className="number">{Number(p.afternoon_rate).toLocaleString('th-TH')}</td><td><span className={`status ${p.status}`}>{p.status==='active'?'ใช้งาน':'ไม่ใช้งาน'}</span></td>{isAdmin&&<td><div className="actions"><button title="แก้ไข" onClick={()=>onEdit(p)}><Pencil size={16}/></button><button title={p.status==='active'?'ระงับ':'เปิดใช้งาน'} onClick={()=>onToggle(p)}>{p.status==='active'?'ระงับ':'เปิดใช้'}</button></div></td>}</tr>)}</tbody></table></div>
-      <div className="table-foot">แสดง {staff.length} จาก {allCount} รายการ · ข้อมูลจากฐานข้อมูล Supabase</div>
-    </div>
-  </>
+function StaffPage({
+  staff,
+  allCount,
+  search,
+  setSearch,
+  loading,
+  onAdd,
+  onEdit,
+  onToggle,
+  onDelete,
+  onReorder,
+  isAdmin,
+}: {
+  staff: Staff[]
+  allCount: number
+  search: string
+  setSearch: (v: string) => void
+  loading: boolean
+  onAdd: () => void
+  onEdit: (p: Staff) => void
+  onToggle: (p: Staff) => void
+  onDelete: (p: Staff) => void
+  onReorder: () => void
+  isAdmin: boolean
+}) {
+  return (
+    <>
+      <div className="page-heading no-print">
+        <div>
+          <div className="eyebrow font-semibold">STAFF MANAGEMENT</div>
+          <h1 className="text-2xl font-bold">จัดการบุคลากร</h1>
+          <p className="text-gray-600">
+            รายชื่อเจ้าหน้าที่ ตำแหน่ง ประเภท และอัตราค่าตอบแทนรายเวร (ทั้งหมด {allCount} ราย)
+          </p>
+        </div>
+
+        {isAdmin && (
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button type="button" className="btn secondary" onClick={onReorder}>
+              <ListOrdered size={17} /> จัดเรียงลำดับ
+            </button>
+            <button type="button" className="btn primary" onClick={onAdd}>
+              <Plus size={17} /> เพิ่มบุคลากร
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="panel no-print">
+        <div className="toolbar" style={{ marginBottom: '16px' }}>
+          <div className="search-box" style={{ flex: 1, maxWidth: '400px', position: 'relative' }}>
+            <Search size={17} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+            <input
+              type="text"
+              placeholder="ค้นหาชื่อ, นามสกุล หรือตำแหน่ง..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ width: '100%', paddingLeft: '36px' }}
+            />
+          </div>
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+            <Loader2 size={24} className="animate-spin" style={{ margin: '0 auto 8px' }} />
+            กำลังโหลดข้อมูลบุคลากร...
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style={{ width: '60px', textAlign: 'center' }}>ลำดับ</th>
+                  <th>ชื่อ - นามสกุล</th>
+                  <th>ตำแหน่ง</th>
+                  <th>ประเภท</th>
+                  <th style={{ textAlign: 'right' }}>เวรเช้า (บาท)</th>
+                  <th style={{ textAlign: 'right' }}>เวรบ่าย (บาท)</th>
+                  <th style={{ textAlign: 'center' }}>สถานะ</th>
+                  {isAdmin && <th style={{ textAlign: 'right', width: '110px' }}>จัดการ</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {staff.length === 0 ? (
+                  <tr>
+                    <td colSpan={isAdmin ? 8 : 7} style={{ textAlign: 'center', padding: '32px', color: '#94a3b8' }}>
+                      ไม่พบข้อมูลบุคลากร
+                    </td>
+                  </tr>
+                ) : (
+                  staff.map((person, index) => (
+                    <tr key={person.id}>
+                      <td style={{ textAlign: 'center', fontWeight: 'bold', color: '#64748b' }}>{index + 1}</td>
+                      <td style={{ fontWeight: 600 }}>
+                        {person.first_name} {person.last_name}
+                      </td>
+                      <td>{person.position}</td>
+                      <td>
+                        <span className={`badge ${person.staff_type === 'วิชาชีพ' ? 'blue' : 'gray'}`}>
+                          {person.staff_type}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>{Number(person.morning_rate || 0).toLocaleString()}</td>
+                      <td style={{ textAlign: 'right' }}>{Number(person.afternoon_rate || 0).toLocaleString()}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          disabled={!isAdmin}
+                          onClick={() => isAdmin && onToggle(person)}
+                          className={`status-pill ${person.status === 'active' ? 'active' : 'inactive'}`}
+                          style={{ cursor: isAdmin ? 'pointer' : 'default' }}
+                          title={isAdmin ? 'คลิกเพื่อสลับสถานะใช้งาน/ไม่ใช้งาน' : ''}
+                        >
+                          {person.status === 'active' ? 'ใช้งาน' : 'ไม่ใช้งาน'}
+                        </button>
+                      </td>
+                      {isAdmin && (
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                            <button
+                              type="button"
+                              className="icon-button"
+                              onClick={() => onEdit(person)}
+                              title="แก้ไขข้อมูล"
+                            >
+                              <Pencil size={15} />
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-button"
+                              onClick={() => onDelete(person)}
+                              title="ลบบุคลากร (กรณีโอนย้าย/ลาออก)"
+                              style={{ color: '#dc2626' }}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </>
+  )
 }

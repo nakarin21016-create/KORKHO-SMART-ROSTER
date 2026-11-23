@@ -663,7 +663,7 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({ staff = [] }) 
                 disabled={saveLoading}
                 style={{ backgroundColor: '#059669', color: '#ffffff', padding: '10px 24px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}
               >
-                {saveLoading ? 'กำลังบันทึก...' : '💾 บันทึกประวัติ & 🖨️ พิมพ์ใบนัด (A5)'}
+                {saveLoading ? 'กำลังบันทึก...' : '💾 บันทึกประวัติ & 🖨️ พิมพ์ใบนัด (A5 แนวนอน)'}
               </button>
             </div>
           </div>
@@ -723,7 +723,7 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({ staff = [] }) 
 
       {/* Modal สำหรับสร้างประเภทใบนัดใหม่ */}
       {showAddTypeModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
+        <div className="no-print" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
           <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', width: '450px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
             <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>➕ เพิ่มประเภทใบนัดหมายใหม่</h3>
             <div style={{ marginBottom: '12px' }}>
@@ -752,61 +752,65 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({ staff = [] }) 
         </div>
       )}
 
-      {/* เอกสารใบนัดทางการ ขนาด A5 สำหรับสั่งพิมพ์ */}
+      {/* เอกสารใบนัดทางการ ขนาด A5 แนวนอน สำหรับสั่งพิมพ์ */}
       <div id="print-area" style={{
         backgroundColor: '#ffffff',
-        padding: '22px 28px',
+        padding: '16px 24px',
         border: '1px solid #000000',
         fontFamily: "'TH Sarabun PSK', Sarabun, sans-serif",
-        fontSize: '18px',
-        lineHeight: '1.45',
-        boxSizing: 'border-box'
+        fontSize: '17px',
+        lineHeight: '1.35',
+        boxSizing: 'border-box',
+        maxWidth: '210mm',
+        margin: '0 auto'
       }}>
-        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '23px', marginBottom: '2px' }}>
+        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '21px', marginBottom: '2px' }}>
           {currentTypeObj?.name || 'ใบนัดหมายผู้ป่วย'}
         </div>
-        <div style={{ textAlign: 'center', fontSize: '16px', marginBottom: '8px' }}>
+        <div style={{ textAlign: 'center', fontSize: '15px', marginBottom: '6px' }}>
           โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค อำเภอเมืองสุรินทร์ จังหวัดสุรินทร์
         </div>
 
-        <div style={{ borderTop: '1px solid #000000', margin: '6px 0' }}></div>
+        <div style={{ borderTop: '1px solid #000000', margin: '4px 0 6px 0' }}></div>
 
         <div>
-          <p style={{ margin: '3px 0' }}>
+          <p style={{ margin: '2px 0' }}>
             <strong>ผู้ป่วย:</strong> {patient.name || '......................................................................'} &nbsp;&nbsp;
             <strong>HN:</strong> {patient.hn || '............'} &nbsp;&nbsp;
             <strong>อายุ:</strong> {patient.age || '......'} ปี
+            {patient.phone && <> &nbsp;&nbsp;<strong>โทร:</strong> {patient.phone}</>}
           </p>
-          {patient.phone && <p style={{ margin: '3px 0' }}><strong>เบอร์โทรศัพท์:</strong> {patient.phone}</p>}
 
           {/* สลับรูปแบบการพิมพ์ระหว่าง นัดครั้งเดียว vs ตารางนัดหลายเข็ม */}
           {!isMultiDoseMode ? (
-            <div style={{ border: '1px solid #000000', padding: '10px 14px', borderRadius: '4px', margin: '8px 0', backgroundColor: '#fafafa' }}>
-              <p style={{ margin: '2px 0', fontSize: '19px', fontWeight: 'bold' }}>
+            <div style={{ border: '1px solid #000000', padding: '8px 12px', borderRadius: '4px', margin: '6px 0', backgroundColor: '#fafafa' }}>
+              <p style={{ margin: '2px 0', fontSize: '18px', fontWeight: 'bold' }}>
                 📅 วันที่นัดหมาย: {appDate ? new Date(appDate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }) : '.........................................................'}
               </p>
-              <p style={{ margin: '2px 0' }}><strong>⏰ เวลา:</strong> {appTime}</p>
-              <p style={{ margin: '2px 0' }}><strong>📍 สถานที่:</strong> {location}</p>
+              <p style={{ margin: '2px 0' }}>
+                <strong>⏰ เวลา:</strong> {appTime} &nbsp;&nbsp;&nbsp;&nbsp;
+                <strong>📍 สถานที่:</strong> {location}
+              </p>
             </div>
           ) : (
-            <div style={{ margin: '8px 0' }}>
-              <p style={{ margin: '2px 0 6px 0', fontWeight: 'bold' }}>💉 รายการวัคซีน: {vaccineName}</p>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '16px', marginBottom: '6px' }}>
+            <div style={{ margin: '6px 0' }}>
+              <p style={{ margin: '2px 0 4px 0', fontWeight: 'bold' }}>💉 รายการวัคซีน: {vaccineName}</p>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '15px', marginBottom: '4px' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#f1f5f9' }}>
-                    <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'left' }}>ครั้งที่ / เข็มที่</th>
-                    <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'left' }}>วันที่นัดหมาย</th>
-                    <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center' }}>เวลานัด</th>
-                    <th style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center', width: '90px' }}>ผู้ฉีด/บันทึก</th>
+                    <th style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'left' }}>ครั้งที่ / เข็มที่</th>
+                    <th style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'left' }}>วันที่นัดหมาย</th>
+                    <th style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'center' }}>เวลานัด</th>
+                    <th style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'center', width: '90px' }}>ผู้ฉีด/บันทึก</th>
                   </tr>
                 </thead>
                 <tbody>
                   {appointmentSlots.map((slot, i) => (
                     <tr key={i}>
-                      <td style={{ border: '1px solid #000', padding: '4px 6px', fontWeight: 'bold' }}>{slot.label}</td>
-                      <td style={{ border: '1px solid #000', padding: '4px 6px' }}>{formatThaiDate(slot.date)}</td>
-                      <td style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center' }}>{slot.time}</td>
-                      <td style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'center' }}>[ &nbsp; ] ฉีดแล้ว</td>
+                      <td style={{ border: '1px solid #000', padding: '3px 6px', fontWeight: 'bold' }}>{slot.label}</td>
+                      <td style={{ border: '1px solid #000', padding: '3px 6px' }}>{formatThaiDate(slot.date)}</td>
+                      <td style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'center' }}>{slot.time}</td>
+                      <td style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'center' }}>[ &nbsp; ] ฉีดแล้ว</td>
                     </tr>
                   ))}
                 </tbody>
@@ -818,12 +822,12 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({ staff = [] }) 
           <p style={{ margin: '4px 0' }}><strong>📝 การเตรียมตัว / คำแนะนำ:</strong> {preparation || '-'}</p>
         </div>
 
-        <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '14px' }}>
+        <div style={{ marginTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '14px' }}>
           <div>
             <p style={{ margin: 0 }}>* กรุณานำใบนัดนี้พร้อมบัตรประชาชนมาแสดงทุกครั้งที่มาตามนัด</p>
             <p style={{ margin: 0 }}>* หากไม่สามารถมาตามนัดได้ กรุณาแจ้งล่วงหน้า (รพ.สต.คอโค)</p>
           </div>
-          <div style={{ textAlign: 'center', lineHeight: '1.4' }}>
+          <div style={{ textAlign: 'center', lineHeight: '1.3' }}>
             <p style={{ margin: 0 }}>ลงชื่อ .....................................................</p>
             <p style={{ margin: '2px 0 0 0' }}>( {doctorOrStaff || '.....................................................'} )</p>
             {officerPosition && <p style={{ margin: 0, fontSize: '13px' }}>{officerPosition}</p>}
@@ -831,11 +835,16 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({ staff = [] }) 
         </div>
       </div>
 
-      {/* CSS สไตล์กำหนดการพิมพ์ขนาดกระดาษ A5 Portrait */}
+      {/* CSS สไตล์กำหนดการพิมพ์ขนาดกระดาษ A5 แนวนอนอัตโนมัติ */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&family=TH+Sarabun+PSK:wght@400;700&display=swap');
 
         @media print {
+          @page {
+            size: A5 landscape;
+            margin: 6mm;
+          }
+
           html, body {
             margin: 0 !important;
             padding: 0 !important;
@@ -846,29 +855,25 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({ staff = [] }) 
             visibility: hidden !important;
           }
 
+          .sidebar, .topbar, .no-print {
+            display: none !important;
+          }
+
           #print-area, #print-area * {
             visibility: visible !important;
             font-family: 'TH Sarabun PSK', Sarabun, sans-serif !important;
           }
 
           #print-area {
-            position: absolute !important;
+            position: fixed !important;
             left: 0 !important;
             top: 0 !important;
             width: 100% !important;
-            padding: 8mm 12mm !important;
+            max-width: 100% !important;
+            padding: 4mm 8mm !important;
             margin: 0 !important;
-            border: none !important;
+            border: 1px solid #000000 !important;
             box-shadow: none !important;
-          }
-
-          .no-print {
-            display: none !important;
-          }
-
-          @page {
-            size: A5 portrait;
-            margin: 8mm;
           }
         }
       `}</style>
