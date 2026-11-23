@@ -92,7 +92,7 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     setError('');
 
     try {
-      const res = await fetch(`[http://192.168.1.175:3001](http://192.168.1.175:3001)/api/patient/${cidInput}`);
+      const res = await fetch(`http://192.168.1.175:3001/api/patient/${cidInput}`);
       const data = await res.json();
 
       if (!res.ok) {
