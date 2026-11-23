@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 
 export interface Staff {
   id?: string | number;
@@ -33,6 +33,28 @@ interface MedicalCertPageProps {
 
 const SUPABASE_GARUDA_URL = "https://usbqvlbasiktsovybvre.supabase.co/storage/v1/object/public/picture/garuda.jpg.svg";
 
+// ฟังก์ชันแปลงวันที่ YYYY-MM-DD ให้เป็น "วันที่ ชื่อเดือน ปี พ.ศ."
+const formatThaiDate = (isoDate: string) => {
+  if (!isoDate) return '';
+  const parts = isoDate.split('-');
+  if (parts.length !== 3) return isoDate;
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  const d = new Date(year, month, day);
+  if (isNaN(d.getTime())) return isoDate;
+  return d.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+};
+
+// วันที่ปัจจุบันรูปแบบ YYYY-MM-DD ตามเวลาเครื่อง
+const getTodayISO = () => {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
 export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) => {
   const [cidInput, setCidInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,9 +64,16 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
   const [selectedStaffId, setSelectedStaffId] = useState<string>('');
   const [officerName, setOfficerName] = useState('');
   const [officerPosition, setOfficerPosition] = useState('พยาบาลวิชาชีพชำนาญการ');
-  const [certDate, setCertDate] = useState(
-    new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
-  );
+
+  // เก็บวันที่ออกเอกสารทั้งแบบ ISO (สำหรับปฏิทิน) และแบบไทย (สำหรับแสดงผล/พิมพ์)
+  const [certDateISO, setCertDateISO] = useState(getTodayISO());
+  const [certDate, setCertDate] = useState(formatThaiDate(getTodayISO()));
+
+  // เก็บวันที่มารับการตรวจแบบ ISO สำหรับซิงก์กับปฏิทิน
+  const [vstDateISO, setVstDateISO] = useState('');
+
+  const vstDateInputRef = useRef<HTMLInputElement>(null);
+  const certDateInputRef = useRef<HTMLInputElement>(null);
 
   const [patient, setPatient] = useState<PatientData>({
     hn: '',
@@ -82,6 +111,23 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     }
   };
 
+  // เมื่อเลือกวันที่มารับการตรวจจากปฏิทิน
+  const handleVstDateCalendarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const iso = e.target.value;
+    setVstDateISO(iso);
+    setPatient((prev) => ({
+      ...prev,
+      vstdate: formatThaiDate(iso)
+    }));
+  };
+
+  // เมื่อเลือกวันที่ออกเอกสารจากปฏิทิน
+  const handleCertDateCalendarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const iso = e.target.value;
+    setCertDateISO(iso);
+    setCertDate(formatThaiDate(iso));
+  };
+
   const handleFetchData = async () => {
     if (!cidInput || cidInput.length !== 13) {
       setError('กรุณากรอกเลขบัตรประชาชน 13 หลักให้ถูกต้อง');
@@ -99,15 +145,16 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
         throw new Error(data.message || data.error || 'ไม่พบข้อมูลผู้ป่วย');
       }
 
+      const rawVstDate = data.vstdate ? String(data.vstdate).split('T')[0] : getTodayISO();
+      setVstDateISO(rawVstDate);
+
       setPatient({
         hn: data.hn || '',
         cid: data.cid || '',
         patient_name: data.patient_name || '',
         age: data.age || '',
         address: data.address || '',
-        vstdate: data.vstdate
-          ? new Date(data.vstdate).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })
-          : new Date().toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' }),
+        vstdate: formatThaiDate(rawVstDate),
         symptoms: data.symptoms || 'ตรวจสุขภาพทั่วไป'
       });
     } catch (err: any) {
@@ -211,14 +258,45 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
               />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '3px' }}>วันที่มารับการตรวจ</label>
-              <input
-                type="text"
-                value={patient.vstdate}
-                onChange={(e) => setPatient({ ...patient, vstdate: e.target.value })}
-                placeholder="ระบุวันที่ตรวจ"
-                style={{ width: '100%', padding: '8px 10px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }}
-              />
+              <label style={{ display: 'block', fontSize: '12px', color: '#64748b', marginBottom: '3px' }}>วันที่มารับการตรวจ (คลิกเลือกปฏิทิน)</label>
+              <div
+                onClick={() => vstDateInputRef.current?.showPicker?.()}
+                style={{ position: 'relative', width: '100%', cursor: 'pointer' }}
+              >
+                <input
+                  type="text"
+                  readOnly
+                  value={patient.vstdate}
+                  placeholder="เลือกวันที่ตรวจ"
+                  style={{
+                    width: '100%',
+                    padding: '8px 32px 8px 10px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    boxSizing: 'border-box',
+                    backgroundColor: '#ffffff',
+                    cursor: 'pointer'
+                  }}
+                />
+                <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', fontSize: '14px' }}>
+                  📅
+                </span>
+                <input
+                  ref={vstDateInputRef}
+                  type="date"
+                  value={vstDateISO}
+                  onChange={handleVstDateCalendarChange}
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    opacity: 0,
+                    width: '100%',
+                    height: '100%',
+                    cursor: 'pointer'
+                  }}
+                />
+              </div>
             </div>
           </div>
 
@@ -323,14 +401,45 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
 
           <div>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#475569', marginBottom: '4px' }}>
-              วันที่ออกเอกสาร
+              วันที่ออกเอกสาร (คลิกเลือกปฏิทิน)
             </label>
-            <input
-              type="text"
-              value={certDate}
-              onChange={(e) => setCertDate(e.target.value)}
-              style={{ width: '100%', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}
-            />
+            <div
+              onClick={() => certDateInputRef.current?.showPicker?.()}
+              style={{ position: 'relative', width: '100%', cursor: 'pointer' }}
+            >
+              <input
+                type="text"
+                readOnly
+                value={certDate}
+                style={{
+                  width: '100%',
+                  padding: '8px 32px 8px 12px',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  boxSizing: 'border-box',
+                  backgroundColor: '#ffffff',
+                  cursor: 'pointer'
+                }}
+              />
+              <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', fontSize: '14px' }}>
+                📅
+              </span>
+              <input
+                ref={certDateInputRef}
+                type="date"
+                value={certDateISO}
+                onChange={handleCertDateCalendarChange}
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  opacity: 0,
+                  width: '100%',
+                  height: '100%',
+                  cursor: 'pointer'
+                }}
+              />
+            </div>
           </div>
         </div>
 
