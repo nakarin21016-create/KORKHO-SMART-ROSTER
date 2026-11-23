@@ -2315,7 +2315,7 @@ function RosterCalendarPage({
                                 style={{
                                   fontWeight: 'bold',
                                   fontSize: '14px',
-                                  color: cell.isOfficialHoliday ? '#dc2626' : cell.isCustomHoliday ? '#b45309' : cell.isSunday ? '#dc2626' : cell.isSaturday ? '#0284c7' : '#1e293b'
+                                  color: cell.isOfficialHoliday ? '#0284c7' : cell.isCustomHoliday ? '#b45309' : cell.isSunday ? '#0284c7' : cell.isSaturday ? '#0284c7' : '#1e293b'
                                 }}
                               >
                                 {cell.day} {cell.isOfficialHoliday ? '🔴' : cell.isCustomHoliday ? '⭐' : ''}
@@ -2518,7 +2518,7 @@ function RosterCalendarPage({
                         padding: '2px 1px', 
                         textAlign: 'center', 
                         fontSize: '11px',
-                        color: (d.isSunday || d.isOfficialHoliday) ? '#dc2626' : d.isCustomHoliday ? '#b45309' : d.isSaturday ? '#0284c7' : '#000000',
+                        color: (d.isSunday || d.isOfficialHoliday) ? '#0284c7' : d.isCustomHoliday ? '#b45309' : d.isSaturday ? '#0284c7' : '#000000',
                         backgroundColor: d.isOfficialHoliday ? '#e0f2fe' : d.isCustomHoliday ? '#fef3c7' : d.isSunday ? '#e0f2fe' : d.isSaturday ? '#e0f2fe' : '#ffffff'
                       }}
                     >
