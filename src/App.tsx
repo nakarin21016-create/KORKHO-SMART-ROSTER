@@ -728,7 +728,7 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
         if (certRows.length === 0) {
           try {
             const params = useAllDates ? 'all=true' : `start=${startDate}&end=${endDate}`
-            const res = await fetch(`http://localhost:3001/api/medical-certs/export?${params}`)
+            const res = await fetch(`[http://192.168.1.175:3001](http://192.168.1.175:3001)/api/medical-certs/export?${params}`)
             if (res.ok) certRows = await res.json()
           } catch {}
         }
@@ -742,7 +742,7 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
         let appRows: any[] = []
         try {
           const params = useAllDates ? 'all=true' : `start=${startDate}&end=${endDate}`
-          const res = await fetch(`http://localhost:3001/api/appointments/export?${params}`)
+          const res = await fetch(`[http://192.168.1.175:3001](http://192.168.1.175:3001)/api/appointments/export?${params}`)
           if (res.ok) appRows = await res.json()
         } catch {}
 
