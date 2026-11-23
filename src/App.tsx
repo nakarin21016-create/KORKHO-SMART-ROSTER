@@ -524,8 +524,47 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
     defaultOrderPrefix: '46/2569',
   })
 
+  const [loadingSettings, setLoadingSettings] = useState(true)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
+
+  // โหลดค่าตั้งค่าล่าสุดจากตาราง system_settings ใน Supabase ทันทีที่เปิดหน้าตั้งค่า
+  useEffect(() => {
+    let isMounted = true
+    async function loadSystemSettings() {
+      if (!supabase) {
+        if (isMounted) setLoadingSettings(false)
+        return
+      }
+      try {
+        const { data, error } = await supabase
+          .from('system_settings')
+          .select('*')
+          .eq('id', 1)
+          .single()
+
+        if (!error && data && isMounted) {
+          setOrgConfig({
+            hospitalName: data.hospital_name || 'โรงพยาบาลส่งเสริมสุขภาพตำบลคอโค',
+            district: data.district || 'อำเภอเมืองสุรินทร์',
+            province: data.province || 'จังหวัดสุรินทร์',
+            hospitalCode: data.hospital_code || '10978',
+            defaultMorningRate: String(data.default_morning_rate ?? '300'),
+            defaultAfternoonRate: String(data.default_afternoon_rate ?? '300'),
+            defaultOrderPrefix: data.default_order_prefix || '46/2569',
+          })
+        }
+      } catch (err) {
+        console.error('Load settings error:', err)
+      } finally {
+        if (isMounted) setLoadingSettings(false)
+      }
+    }
+    loadSystemSettings()
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   // รายการข้อมูลทั้งหมดตามเมนู Sidebar
   const [exportOptions, setExportOptions] = useState({
@@ -560,13 +599,42 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
     })
   }
 
-  function handleSaveSettings(e: FormEvent) {
+  async function handleSaveSettings(e: FormEvent) {
     e.preventDefault()
+    if (!supabase) {
+      setMsg({ text: 'ไม่สามารถเชื่อมต่อฐานข้อมูล Supabase ได้', type: 'error' })
+      return
+    }
+
     setSaving(true)
-    setTimeout(() => {
+    setMsg(null)
+
+    try {
+      const { error } = await supabase
+        .from('system_settings')
+        .upsert(
+          {
+            id: 1,
+            hospital_name: orgConfig.hospitalName.trim(),
+            district: orgConfig.district.trim(),
+            province: orgConfig.province.trim(),
+            hospital_code: orgConfig.hospitalCode.trim(),
+            default_morning_rate: String(orgConfig.defaultMorningRate || '300'),
+            default_afternoon_rate: String(orgConfig.defaultAfternoonRate || '300'),
+            default_order_prefix: orgConfig.defaultOrderPrefix || '46/2569',
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'id' }
+        )
+
+      if (error) throw error
+
+      setMsg({ text: 'บันทึกการตั้งค่าระบบลงฐานข้อมูลเรียบร้อยแล้ว', type: 'success' })
+    } catch (err: any) {
+      setMsg({ text: 'บันทึกไม่สำเร็จ: ' + (err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ'), type: 'error' })
+    } finally {
       setSaving(false)
-      setMsg({ text: 'บันทึกการตั้งค่าระบบเรียบร้อยแล้ว', type: 'success' })
-    }, 400)
+    }
   }
 
   // แปลงข้อมูลเป็น CSV รองรับภาษาไทยใน Excel (UTF-8 with BOM)
@@ -679,7 +747,6 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
       if (exportOptions.compensation && supabase) {
         const assignments = await fetchSupabaseWithDateFilter('duty_assignments', ['duty_date', 'date', 'created_at'])
         if (assignments.length > 0) {
-          // สรุปยอดรวมรายบุคคลสำหรับใบเบิกและค่าตอบแทนตามช่วงวันที่เลือก
           const summaryByStaff: Record<string, { name: string; position: string; morningCount: number; afternoonCount: number; totalAmount: number }> = {}
           
           assignments.forEach((item: any) => {
@@ -805,29 +872,30 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
         <form onSubmit={handleSaveSettings} className="panel" style={{ backgroundColor: '#ffffff', borderRadius: '12px', padding: '20px', border: '1px solid #cbd5e1' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 'bold', marginBottom: '14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Building size={18} /> ข้อมูลสถานพยาบาล / หน่วยงาน
+            {loadingSettings && <span style={{ fontSize: '12px', color: '#0284c7', fontWeight: 'normal' }}>(กำลังโหลดข้อมูล...)</span>}
           </h3>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', opacity: loadingSettings ? 0.6 : 1 }}>
             <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
               ชื่อสถานพยาบาล:
-              <input value={orgConfig.hospitalName} onChange={e => setOrgConfig({ ...orgConfig, hospitalName: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px', boxSizing: 'border-box' }} />
+              <input disabled={loadingSettings} value={orgConfig.hospitalName} onChange={e => setOrgConfig({ ...orgConfig, hospitalName: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px', boxSizing: 'border-box' }} />
             </label>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
               <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
                 อำเภอ:
-                <input value={orgConfig.district} onChange={e => setOrgConfig({ ...orgConfig, district: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px', boxSizing: 'border-box' }} />
+                <input disabled={loadingSettings} value={orgConfig.district} onChange={e => setOrgConfig({ ...orgConfig, district: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px', boxSizing: 'border-box' }} />
               </label>
 
               <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
                 จังหวัด:
-                <input value={orgConfig.province} onChange={e => setOrgConfig({ ...orgConfig, province: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px', boxSizing: 'border-box' }} />
+                <input disabled={loadingSettings} value={orgConfig.province} onChange={e => setOrgConfig({ ...orgConfig, province: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px', boxSizing: 'border-box' }} />
               </label>
             </div>
 
             <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
               รหัสหน่วยงาน (HCODE):
-              <input value={orgConfig.hospitalCode} onChange={e => setOrgConfig({ ...orgConfig, hospitalCode: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px', boxSizing: 'border-box' }} />
+              <input disabled={loadingSettings} value={orgConfig.hospitalCode} onChange={e => setOrgConfig({ ...orgConfig, hospitalCode: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px', boxSizing: 'border-box' }} />
             </label>
           </div>
 
@@ -837,19 +905,19 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
             <CircleDollarSign size={18} /> อัตราค่าตอบแทนมาตรฐาน (Default Rate)
           </h3>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px', opacity: loadingSettings ? 0.6 : 1 }}>
             <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
               เวรเช้า (บาท/ครั้ง):
-              <input type="number" value={orgConfig.defaultMorningRate} onChange={e => setOrgConfig({ ...orgConfig, defaultMorningRate: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px', boxSizing: 'border-box' }} />
+              <input disabled={loadingSettings} type="number" value={orgConfig.defaultMorningRate} onChange={e => setOrgConfig({ ...orgConfig, defaultMorningRate: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px', boxSizing: 'border-box' }} />
             </label>
 
             <label style={{ fontSize: '13px', fontWeight: 500, color: '#334155' }}>
               เวรบ่าย (บาท/ครั้ง):
-              <input type="number" value={orgConfig.defaultAfternoonRate} onChange={e => setOrgConfig({ ...orgConfig, defaultAfternoonRate: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px', boxSizing: 'border-box' }} />
+              <input disabled={loadingSettings} type="number" value={orgConfig.defaultAfternoonRate} onChange={e => setOrgConfig({ ...orgConfig, defaultAfternoonRate: e.target.value })} style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginTop: '4px', fontSize: '13px', boxSizing: 'border-box' }} />
             </label>
           </div>
 
-          <button className="btn primary" disabled={saving} style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}>
+          <button type="submit" className="btn primary" disabled={saving || loadingSettings} style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}>
             {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
             {saving ? 'กำลังบันทึก...' : 'บันทึกข้อมูลตั้งค่า'}
           </button>
@@ -869,7 +937,7 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
             </div>
 
             <div style={{ fontSize: '12.5px', color: '#64748b' }}>
-              * การจัดการเพิ่มผู้ใช้งานใหม่และการเปลี่ยนรหัสผ่าน สามารถทำผ่านระบบบริหารจัดการของ Supabase ได้อย่างปลอดภัย
+- การจัดการเพิ่มผู้ใช้งานใหม่และการเปลี่ยนรหัสผ่าน สามารถทำผ่านระบบบริหารจัดการของ Supabase ได้อย่างปลอดภัย
             </div>
           </div>
 
@@ -893,34 +961,34 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
                 <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <input type="checkbox" checked={exportOptions.staff} onChange={e => setExportOptions({ ...exportOptions, staff: e.target.checked })} />
-                    1. จัดการบุคลากร (รายชื่อ/ตำแหน่ง/เรทค่าเวร)
+1. จัดการบุคลากร (รายชื่อ/ตำแหน่ง/เรทค่าเวร)
                   </span>
                   <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#0284c7' }}>{staffCount} ราย</span>
                 </label>
 
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   <input type="checkbox" checked={exportOptions.roster} onChange={e => setExportOptions({ ...exportOptions, roster: e.target.checked })} />
-                  2. จัดตารางเวร (รายละเอียดเวรรายวันรายบุคคล)
+2. จัดตารางเวร (รายละเอียดเวรรายวันรายบุคคล)
                 </label>
 
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   <input type="checkbox" checked={exportOptions.compensation} onChange={e => setExportOptions({ ...exportOptions, compensation: e.target.checked })} />
-                  3. ค่าตอบแทน & ใบเบิกเอกสาร (สรุปยอดเงินรายบุคคล)
+3. ค่าตอบแทน & ใบเบิกเอกสาร (สรุปยอดเงินรายบุคคล)
                 </label>
 
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   <input type="checkbox" checked={exportOptions.medicalCert} onChange={e => setExportOptions({ ...exportOptions, medicalCert: e.target.checked })} />
-                  4. ใบรับรองการตรวจ (ประวัติการออกใบรับรอง)
+4. ใบรับรองการตรวจ (ประวัติการออกใบรับรอง)
                 </label>
 
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   <input type="checkbox" checked={exportOptions.appointments} onChange={e => setExportOptions({ ...exportOptions, appointments: e.target.checked })} />
-                  5. ออกใบนัดหมายผู้ป่วย (ประวัติใบนัด/วัคซีน)
+5. ออกใบนัดหมายผู้ป่วย (ประวัติใบนัด/วัคซีน)
                 </label>
 
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   <input type="checkbox" checked={exportOptions.workSummary} onChange={e => setExportOptions({ ...exportOptions, workSummary: e.target.checked })} />
-                  6. สรุปผลการปฏิบัติงาน (รายงานผลการปฏิบัติงาน)
+6. สรุปผลการปฏิบัติงาน (รายงานผลการปฏิบัติงาน)
                 </label>
               </div>
             </div>
