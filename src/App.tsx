@@ -2268,7 +2268,7 @@ function RosterCalendarPage({
                           fontWeight: 'bold',
                           fontSize: '14px',
                           color: '#ffffff',
-                          backgroundColor: idx === 0 ? '#dc2626' : idx === 6 ? '#0284c7' : '#0f172a',
+                          backgroundColor: idx === 0 ? '#0284c7' : idx === 6 ? '#0284c7' : '#0f172a',
                           border: '1px solid #334155',
                           width: '14.28%'
                         }}
