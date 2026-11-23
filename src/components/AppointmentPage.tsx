@@ -721,7 +721,7 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({ staff = [] }) 
         )}
       </div>
 
-      {/* Modal สำหรับสร้างประเภทใบนัดใหม่ */}
+{/* Modal สำหรับสร้างประเภทใบนัดใหม่ */}
       {showAddTypeModal && (
         <div className="no-print" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
           <div style={{ backgroundColor: '#ffffff', padding: '24px', borderRadius: '12px', width: '450px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}>
@@ -761,8 +761,10 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({ staff = [] }) 
         fontSize: '17px',
         lineHeight: '1.35',
         boxSizing: 'border-box',
+        width: '100%',
         maxWidth: '210mm',
-        margin: '0 auto'
+        margin: '0 auto',
+        overflow: 'hidden'
       }}>
         <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '21px', marginBottom: '2px' }}>
           {currentTypeObj?.name || 'ใบนัดหมายผู้ป่วย'}
@@ -793,24 +795,52 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({ staff = [] }) 
               </p>
             </div>
           ) : (
-            <div style={{ margin: '6px 0' }}>
+            <div style={{ margin: '6px 0', width: '100%' }}>
               <p style={{ margin: '2px 0 4px 0', fontWeight: 'bold' }}>💉 รายการวัคซีน: {vaccineName}</p>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '15px', marginBottom: '4px' }}>
+              <table
+                className="appointment-dose-table"
+                style={{
+                  width: '100%',
+                  maxWidth: '100%',
+                  minWidth: 0,
+                  tableLayout: 'fixed',
+                  borderCollapse: 'collapse',
+                  fontSize: '15px',
+                  marginBottom: '4px',
+                  boxSizing: 'border-box'
+                }}
+              >
                 <thead>
                   <tr style={{ backgroundColor: '#f1f5f9' }}>
-                    <th style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'left' }}>ครั้งที่ / เข็มที่</th>
-                    <th style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'left' }}>วันที่นัดหมาย</th>
-                    <th style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'center' }}>เวลานัด</th>
-                    <th style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'center', width: '90px' }}>ผู้ฉีด/บันทึก</th>
+                    <th style={{ width: '28%', minWidth: 0, border: '1px solid #000', padding: '3px 6px', textAlign: 'left', boxSizing: 'border-box' }}>
+                      ครั้งที่ / เข็มที่
+                    </th>
+                    <th style={{ width: '32%', minWidth: 0, border: '1px solid #000', padding: '3px 6px', textAlign: 'left', boxSizing: 'border-box' }}>
+                      วันที่นัดหมาย
+                    </th>
+                    <th style={{ width: '22%', minWidth: 0, border: '1px solid #000', padding: '3px 6px', textAlign: 'center', boxSizing: 'border-box' }}>
+                      เวลานัด
+                    </th>
+                    <th style={{ width: '18%', minWidth: 0, border: '1px solid #000', padding: '3px 6px', textAlign: 'center', boxSizing: 'border-box' }}>
+                      ผู้ฉีด/บันทึก
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {appointmentSlots.map((slot, i) => (
                     <tr key={i}>
-                      <td style={{ border: '1px solid #000', padding: '3px 6px', fontWeight: 'bold' }}>{slot.label}</td>
-                      <td style={{ border: '1px solid #000', padding: '3px 6px' }}>{formatThaiDate(slot.date)}</td>
-                      <td style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'center' }}>{slot.time}</td>
-                      <td style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'center' }}>[ &nbsp; ] ฉีดแล้ว</td>
+                      <td style={{ minWidth: 0, border: '1px solid #000', padding: '3px 6px', fontWeight: 'bold', wordBreak: 'break-word', boxSizing: 'border-box' }}>
+                        {slot.label}
+                      </td>
+                      <td style={{ minWidth: 0, border: '1px solid #000', padding: '3px 6px', wordBreak: 'break-word', boxSizing: 'border-box' }}>
+                        {formatThaiDate(slot.date)}
+                      </td>
+                      <td style={{ minWidth: 0, border: '1px solid #000', padding: '3px 6px', textAlign: 'center', wordBreak: 'break-word', boxSizing: 'border-box' }}>
+                        {slot.time}
+                      </td>
+                      <td style={{ minWidth: 0, border: '1px solid #000', padding: '3px 6px', textAlign: 'center', boxSizing: 'border-box' }}>
+                        [ &nbsp; ] ฉีดแล้ว
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -838,6 +868,13 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({ staff = [] }) 
       {/* CSS สไตล์กำหนดการพิมพ์ขนาดกระดาษ A5 แนวนอนอัตโนมัติ */}
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&family=TH+Sarabun+PSK:wght@400;700&display=swap');
+
+        #print-area .appointment-dose-table,
+        #print-area .appointment-dose-table th,
+        #print-area .appointment-dose-table td {
+          min-width: 0 !important;
+          box-sizing: border-box !important;
+        }
 
         @media print {
           @page {
@@ -874,6 +911,7 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({ staff = [] }) 
             margin: 0 !important;
             border: 1px solid #000000 !important;
             box-shadow: none !important;
+            box-sizing: border-box !important;
           }
         }
       `}</style>
