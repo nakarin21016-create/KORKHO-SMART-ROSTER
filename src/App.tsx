@@ -1,3 +1,4 @@
+import { getHosxpApiUrl } from './utils/hosxpConfig';
 import { Building2 } from 'lucide-react';
 import { FileCheck, Calendar } from 'lucide-react' // เพิ่มไอคอน FileCheck
 import { MedicalCertPage } from './MedicalCertPage' // เพิ่ม Import คอมโพเนนต์ใบรับรอง
@@ -796,11 +797,12 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
       if (exportOptions.medicalCert) {
         let certRows = await fetchSupabaseWithDateFilter('medical_certificates', ['vstdate', 'issue_date', 'created_at'])
         if (certRows.length === 0) {
-          try {
-            const params = useAllDates ? 'all=true' : `start=${startDate}&end=${endDate}`
-            const res = await fetch(`http://192.168.1.175:3001/api/medical-certs/export?${params}`)
-            if (res.ok) certRows = await res.json()
-          } catch {}
+        try {
+      const apiBase = await getHosxpApiUrl()
+      const params = useAllDates ? 'all=true' : `start=${startDate}&end=${endDate}`
+      const res = await fetch(`${apiBase}/api/medical-certs/export?${params}`)
+      if (res.ok) certRows = await res.json()
+        } catch {}
         }
         if (certRows.length > 0 && downloadCSV(`4_ใบรับรองการตรวจ_${dateTag}.csv`, certRows)) {
           exportedFiles.push('ใบรับรองการตรวจ')
@@ -810,11 +812,12 @@ function SettingsPage({ userEmail, userRole, staffCount }: { userEmail: string; 
       // 5. ประวัติการออกใบนัดหมายผู้ป่วย (Appointments - เช็กทั้ง Local API และ Supabase)
       if (exportOptions.appointments) {
         let appRows: any[] = []
-        try {
-          const params = useAllDates ? 'all=true' : `start=${startDate}&end=${endDate}`
-          const res = await fetch(`http://192.168.1.175:3001/api/appointments/export?${params}`)
-          if (res.ok) appRows = await res.json()
-        } catch {}
+try {
+      const apiBase = await getHosxpApiUrl()
+      const params = useAllDates ? 'all=true' : `start=${startDate}&end=${endDate}`
+      const res = await fetch(`${apiBase}/api/appointments/export?${params}`)
+      if (res.ok) appRows = await res.json()
+    } catch {}
 
         if (appRows.length === 0) {
           appRows = await fetchSupabaseWithDateFilter('appointments', ['appointment_date', 'created_at'])

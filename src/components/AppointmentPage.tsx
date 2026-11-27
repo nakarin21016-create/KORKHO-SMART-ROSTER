@@ -1,3 +1,4 @@
+import { getHosxpApiUrl } from '../utils/hosxpConfig';
 import React, { useState, useEffect } from 'react';
 
 export interface Staff {
@@ -227,7 +228,8 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({ staff = [] }) 
     setStatusMessage({ type: '', text: '' });
 
     try {
-      const res = await fetch(`http://192.168.1.175:3001/api/patient/${cidInput}`);
+      const apiBase = await getHosxpApiUrl();
+      const res = await fetch(`${apiBase}/api/patient/${cidInput}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'ไม่พบข้อมูลผู้ป่วย');
 
@@ -326,8 +328,9 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({ staff = [] }) 
 
     setSaveLoading(true);
     try {
+      const apiBase = await getHosxpApiUrl();
       for (const rec of recordsToSave) {
-        await fetch('http://192.168.1.175:3001/api/appointments', {
+        await fetch(`${apiBase}/api/appointments`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(rec)
@@ -345,9 +348,10 @@ export const AppointmentPage: React.FC<AppointmentPageProps> = ({ staff = [] }) 
   };
 
   // โหลดรายการนัดหมายตามวันที่สำหรับหน้าตารางนัด
-  const fetchAppointmentsByDate = async () => {
-    try {
-      const res = await fetch(`http://192.168.1.175:3001/api/appointments?date=${filterDate}`);
+      const fetchAppointmentsByDate = async () => {
+      try {
+      const apiBase = await getHosxpApiUrl();
+      const res = await fetch(`${apiBase}/api/appointments?date=${filterDate}`);
       if (res.ok) {
         const data = await res.json();
         setAppointmentsList(data);

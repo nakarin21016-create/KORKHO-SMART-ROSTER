@@ -1,3 +1,4 @@
+import { getHosxpApiUrl } from './utils/hosxpConfig';
 import React, { useState, useRef } from 'react';
 
 export interface Staff {
@@ -138,7 +139,8 @@ export const MedicalCertPage: React.FC<MedicalCertPageProps> = ({ staff = [] }) 
     setError('');
 
     try {
-      const res = await fetch(`http://192.168.1.175:3001/api/patient/${cidInput}`);
+      const apiBase = await getHosxpApiUrl();
+      const res = await fetch(`${apiBase}/api/patient/${cidInput}`);
       const data = await res.json();
 
       if (!res.ok) {
