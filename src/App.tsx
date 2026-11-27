@@ -2,17 +2,18 @@ import { Building2 } from 'lucide-react';
 import { FileCheck, Calendar } from 'lucide-react' // เพิ่มไอคอน FileCheck
 import { MedicalCertPage } from './MedicalCertPage' // เพิ่ม Import คอมโพเนนต์ใบรับรอง
 import { AppointmentPage } from './components/AppointmentPage' 
+import PatientReportPage from './components/PatientReportPage'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   Activity, CalendarDays, CircleDollarSign, FileText,
   LayoutDashboard, LogOut, Menu, Plus, Search, Settings, ShieldCheck,
-  Users, X, Pencil, UserRound, Clock3, AlertCircle, Save, Loader2, Table, Printer, UserCheck, Trash2, ArrowUp, ArrowDown, ListOrdered, Building, Database, KeyRound, Download, ClipboardList
+  Users, X, Pencil, UserRound, Clock3, AlertCircle, Save, Loader2, Table, Printer, UserCheck, Trash2, ArrowUp, ArrowDown, ListOrdered, Building, Database, KeyRound, Download, ClipboardList, FileSpreadsheet
 } from 'lucide-react'
 import { supabase, isSupabaseConfigured } from './lib/supabase'
 import type { Staff, StaffType } from './types'
 import { WorkSummary } from './components/WorkSummary'
 
-type Section = 'dashboard' | 'staff' | 'roster' | 'work-summary' | 'compensation' | 'documents' | 'medical-cert' | 'appointment' | 'settings'
+type Section = 'dashboard' | 'staff' | 'roster' | 'work-summary' | 'compensation' | 'documents' | 'medical-cert' | 'appointment' | 'patient-report' | 'settings'
 
 interface Signer {
   id: string
@@ -30,6 +31,7 @@ const menu: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'work-summary', label: 'สรุปผลการปฏิบัติงาน', icon: ClipboardList },
   { id: 'medical-cert', label: 'ใบรับรองการตรวจ', icon: FileCheck },
   { id: 'appointment', label: 'ออกใบนัดหมายผู้ป่วย', icon: Calendar },
+  { id: 'patient-report', label: 'รายงานผู้รับบริการ (HOSxP)', icon: FileSpreadsheet },
   { id: 'settings', label: 'ตั้งค่าระบบ', icon: Settings },
 ]
 
@@ -434,6 +436,7 @@ export default function App() {
           )}
           {section === 'medical-cert' && <MedicalCertPage staff={staff} />}
           {section === 'appointment' && <AppointmentPage staff={staff} />}
+          {section === 'patient-report' && <PatientReportPage />}
           {section === 'settings' && <SettingsPage userEmail={session.user.email} userRole={userRole} staffCount={staff.length} />}
         </div>
       </main>
