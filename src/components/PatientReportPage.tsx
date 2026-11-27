@@ -1,7 +1,7 @@
+import { getHosxpApiUrl } from '../utils/hosxpConfig';
 import React, { useState, useEffect } from 'react';
 import { Search, FileSpreadsheet, Filter, Loader2, AlertCircle, Calendar, Activity } from 'lucide-react';
 
-const HOSXP_API_BASE = 'http://192.168.1.175:3001';
 
 interface PatientVisitRow {
   vn: string;
@@ -51,10 +51,11 @@ export default function PatientReportPage() {
   const [searched, setSearched] = useState<boolean>(false);
 
   // โหลดรายการสิทธิการรักษาและแผนก/บริการตอนเปิดหน้า
-  useEffect(() => {
-    async function loadFilters() {
+ useEffect(() => {
+    const loadFilters = async () => {
       try {
-        const res = await fetch(`${HOSXP_API_BASE}/api/reports/filters`);
+        const apiBase = await getHosxpApiUrl();
+        const res = await fetch(`${apiBase}/api/reports/filters`);
         if (res.ok) {
           const data = await res.json();
           setPttypes(data.pttypes || []);
@@ -62,9 +63,9 @@ export default function PatientReportPage() {
           setLabItems(data.labItems || []);
         }
       } catch (err) {
-        console.error('ไม่สามารถโหลดตัวเลือกจาก HOSxP:', err);
+        console.error('ไม่สามารถโหลดตัวกรองได้:', err);
       }
-    }
+    };
     loadFilters();
   }, []);
 
@@ -89,14 +90,15 @@ export default function PatientReportPage() {
         depcode: selectedDep,
       });
 
-      const res = await fetch(`${HOSXP_API_BASE}/api/reports/patients?${params.toString()}`);
+      const apiBase = await getHosxpApiUrl();
+      const res = await fetch(`${apiBase}/api/reports/patients?${params.toString()}`);
       const result = await res.json();
 
-      if (!res.ok) {
-        throw new Error(result.error || 'ดึงข้อมูลไม่สำเร็จ');
-      }
+    if (!res.ok) {
+      throw new Error(result.error || 'ดึงข้อมูลไม่สำเร็จ');
+    }
 
-      setRows(result.data || []);
+    setRows(result.data || []);
     } catch (err: any) {
       setErrorMsg(
         'ไม่สามารถเชื่อมต่อฐานข้อมูล HOSxP ได้ (ตรวจสอบว่าเปิดใช้งานบนเครื่องแม่ 192.168.1.175 และตั้งค่า Allow Insecure Content แล้ว): ' +
