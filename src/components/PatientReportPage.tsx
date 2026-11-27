@@ -42,6 +42,7 @@ export default function PatientReportPage() {
   // ตัวเลือก Dropdown จาก HOSxP
   const [pttypes, setPttypes] = useState<{ pttype: string; name: string }[]>([]);
   const [departments, setDepartments] = useState<{ depcode: string; department: string }[]>([]);
+  const [labItems, setLabItems] = useState<{ lab_items_code: number; lab_items_name: string }[]>([]);
 
   // ข้อมูลรายงาน
   const [rows, setRows] = useState<PatientVisitRow[]>([]);
@@ -58,6 +59,7 @@ export default function PatientReportPage() {
           const data = await res.json();
           setPttypes(data.pttypes || []);
           setDepartments(data.departments || []);
+          setLabItems(data.labItems || []);
         }
       } catch (err) {
         console.error('ไม่สามารถโหลดตัวเลือกจาก HOSxP:', err);
@@ -340,13 +342,18 @@ export default function PatientReportPage() {
               <Activity size={14} style={{ display: 'inline', marginRight: '4px' }} />
               กรองชื่อผลแลป (เช่น HbA1c, FBS):
             </label>
-            <input
-              type="text"
-              placeholder="พิมพ์ชื่อแลปเพื่อกรองผล..."
+            <select
               value={labKeyword}
               onChange={(e) => setLabKeyword(e.target.value)}
-              style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13.5px', boxSizing: 'border-box' }}
-            />
+              style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13.5px', boxSizing: 'border-box', backgroundColor: '#fff' }}
+            >
+              <option value="">-- ผลแลปทั้งหมด --</option>
+              {labItems.map((lab) => (
+                <option key={lab.lab_items_code} value={lab.lab_items_name}>
+                  {lab.lab_items_name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
